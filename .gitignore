@@ -1,0 +1,54 @@
+# Временные файлы сборки
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.cache
+*.ilk
+*.exp
+*.lib
+*.vsix
+
+# Файлы IDE и редакторов
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet и пакеты
+packages/
+*.nupkg
+.nuget/
+NuGet.config
+
+# Локальные настройки
+*.local
+
+# Логи и диагностика
+*.log
+*.tlog
+*.sass-cache/
+
+# Файлы тестовых покрытий
+coverage.xml
+*.coverage
+*.dotCover
+
+# Резервные копии
+*.bak
+*.tmp
+*.swp
+
+# Файлы проекта
+_ReSharper.*
+*.resharper
+*.DotSettings
+
+# Файлы WPF
+*.aps
+*.pgc
+*.pgd
