@@ -17,10 +17,7 @@ public class Parser (List<Token> tokens)
     {
         List<IStatement> statements = [];
 
-        while (Peek().Type != TokenType.EOF)
-        {
-            statements.Add(ParseStatement());
-        }
+        while (Peek().Type != TokenType.EOF) statements.Add(ParseStatement());
 
         return statements;
     }
@@ -41,9 +38,13 @@ public class Parser (List<Token> tokens)
         Token baseTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления переменной/поля.");
         TypeValue baseType = GetTypeValueFromToken(baseTypeToken.Type);
         IExpression? expression = null;
-        if (Match(TokenType.Assign))
+        if (Match(TokenType.Assign)) expression = ParseExpression();
+
+        if (expression != null)
         {
-            expression = ParseExpression();
+            TypeValue exprType = expression.Evaluate().Type;
+
+            if (!IsTypeCompatible(baseType, exprType)) throw new Exception($"Невозможно преобразовать тип {exprType} в тип {baseType}");
         }
 
         Consume(TokenType.Semicolon, "Отсутствует токен, завершающий строку (';').");
@@ -100,12 +101,9 @@ public class Parser (List<Token> tokens)
 
         while (true)
         {
-            if (Match(TokenType.Equals))
-                expr = new BinaryExpression(new Token(TokenType.Equals, "=="), expr, ParseComparison());
-            else if (Match(TokenType.NotEquals))
-                expr = new BinaryExpression(new Token(TokenType.NotEquals, "!="), expr, ParseComparison());
-            else
-                break;
+            if (Match(TokenType.Equals)) expr = new BinaryExpression(new Token(TokenType.Equals, "=="), expr, ParseComparison());
+            else if (Match(TokenType.NotEquals)) expr = new BinaryExpression(new Token(TokenType.NotEquals, "!="), expr, ParseComparison());
+            else break;
         }
 
         return expr;
@@ -158,14 +156,9 @@ public class Parser (List<Token> tokens)
 
     private IExpression ParseUnary()
     {
-        if (Match(TokenType.Minus))
-        {
-            return new UnaryExpression(new Token(TokenType.Minus, "-"), ParsePrimary());
-        }
-        if (Match(TokenType.Not))
-        {
-            return new UnaryExpression(new Token(TokenType.Not, "!"), ParsePrimary());
-        }
+        if (Match(TokenType.Minus)) return new UnaryExpression(new Token(TokenType.Minus, "-"), ParsePrimary());
+        if (Match(TokenType.Not)) return new UnaryExpression(new Token(TokenType.Not, "!"), ParsePrimary());
+
         return ParsePrimary();
     }
 
@@ -186,13 +179,13 @@ public class Parser (List<Token> tokens)
                 return new LiteralExpression(new IntValue(int.Parse(token.Value)));
             case TokenType.FloatLiteral:
                 pos++;
-                return new LiteralExpression(new FloatValue(float.Parse(token.Value)));
+                return new LiteralExpression(new FloatValue(float.Parse(token.Value.Replace(".", ","))));
             case TokenType.DoubleLiteral:
                 pos++;
-                return new LiteralExpression(new DoubleValue(double.Parse(token.Value)));
+                return new LiteralExpression(new DoubleValue(double.Parse(token.Value.Replace(".", ","))));
             case TokenType.DecimalLiteral:
                 pos++;
-                return new LiteralExpression(new DecimalValue(decimal.Parse(token.Value)));
+                return new LiteralExpression(new DecimalValue(decimal.Parse(token.Value.Replace(".", ","))));
             case TokenType.StringLiteral:
                 pos++;
                 return new LiteralExpression(new StringValue(token.Value));
@@ -206,6 +199,32 @@ public class Parser (List<Token> tokens)
                 throw new Exception($"Неожиданный токен: '{token}'.");
         }
     }
+
+    public static bool IsTypeCompatible(TypeValue left, TypeValue right) => left switch
+    {
+        TypeValue.Int => right == TypeValue.Int,
+        TypeValue.Float => right switch
+        {
+            TypeValue.Int or TypeValue.Float => true,
+            _ => false
+        },
+        TypeValue.Double => right switch
+        {
+            TypeValue.Int or TypeValue.Float or TypeValue.Double => true,
+            _ => false
+        },
+        TypeValue.Decimal => right switch
+        {
+            TypeValue.Int or TypeValue.Float
+            or TypeValue.Double or TypeValue.Decimal => true,
+            _ => false
+        },
+        TypeValue.String => right == TypeValue.String,
+        TypeValue.Bool => right == TypeValue.Bool,
+        TypeValue.Class => right == TypeValue.Class,
+
+        _ => false
+    };
 
     private Token GetTypeToken()
     {

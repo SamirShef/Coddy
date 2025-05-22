@@ -1,2 +1,1 @@
-let a : boolean;
-a = 1 == 1;
+let a : float = 2.2d;
