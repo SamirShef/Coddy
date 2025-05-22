@@ -1,4 +1,3 @@
-class Int :: Object
-{
-	
-}
+a = 2f;
+a = 2.2m
+a = 2.2f

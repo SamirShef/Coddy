@@ -13,6 +13,8 @@ public class Lexer (string source)
         { "let", TokenType.Let },
         { "int", TokenType.Int },
         { "float", TokenType.Float },
+        { "double", TokenType.Double },
+        { "decimal", TokenType.Decimal },
         { "string", TokenType.String },
         { "boolean", TokenType.Bool },
         { "func", TokenType.Func },
@@ -212,7 +214,7 @@ public class Lexer (string source)
                     yield return new Token(TokenType.Dot, "."); pos++; break;
                 case ',':
                     yield return new Token(TokenType.Comma, ","); pos++; break;
-                default: throw new Exception($"Неизвестный оператор '{source[pos]}'");
+                default: throw new Exception($"Неизвестный оператор '{source[pos]}'.");
             }
         }
 
@@ -235,19 +237,37 @@ public class Lexer (string source)
     private Token ReadNumberLiteral()
     {
         StringBuilder builder = new();
+        char suffix = '\0';
 
         while (char.IsDigit(source[pos]) || source[pos] == '.')
         {
             if (source[pos] == '.')
             {
-                if (builder.ToString().Contains('.')) throw new Exception("Некорректный формат числа");
+                if (builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа (число содержит две точки): {builder}.");
                 else if (builder.Length == 0) builder.Append('0');
             }
 
             builder.Append(source[pos++]);
         }
 
-        return new Token(TokenType.NumberLiteral, builder.ToString());
+        char next = source[pos++];
+        switch (next)
+        {
+            case 'f': suffix = 'f'; break;
+            case 'd': suffix = 'd'; break;
+            case 'm': suffix = 'm'; break;
+            default: break;
+        }
+
+        if (suffix == '\0' && builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа (число содержит точку, но не имеет суффикса 'f', 'd' или 'm'): {builder}.");
+
+        return suffix switch
+        {
+            'f' => new Token(TokenType.FloatLiteral, builder.ToString()),
+            'd' => new Token(TokenType.DoubleLiteral, builder.ToString()),
+            'm' => new Token(TokenType.DecimalLiteral, builder.ToString()),
+            _ => new Token(TokenType.IntLiteral, builder.ToString())
+        };
     }
 
     private Token ReadStringLiteral(char closeMark)
@@ -257,7 +277,7 @@ public class Lexer (string source)
 
         while (source[pos] != closeMark)
         {
-            if (source[pos] == '\0') throw new Exception($"Требуется закрывающая кавычка строкового литерала: {closeMark}");
+            if (source[pos] == '\0') throw new Exception($"Требуется закрывающая кавычка строкового литерала: {closeMark}.");
 
             builder.Append(source[pos++]);
         }

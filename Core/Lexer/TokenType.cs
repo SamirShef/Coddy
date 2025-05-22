@@ -6,8 +6,8 @@ public enum TokenType
 
     Class, Let, Func, Return,
 
-    Int, Float, Bool, String,
-    NumberLiteral, StringLiteral, BooleanLiteral,
+    Int, Float, Double, Decimal, Bool, String,
+    IntLiteral, FloatLiteral, DoubleLiteral, DecimalLiteral, StringLiteral, BooleanLiteral,
 
     Plus, Minus, Multiply, Divide, Modulo, Assign,
     PlusAssign, MinusAssign, MultiplyAssign, DivideAssign, ModuloAssign,

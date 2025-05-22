@@ -1,0 +1,108 @@
+﻿namespace Core.Values;
+
+public class FloatValue(float value) : IValue
+{
+    public object Value { get; set; } = value;
+    public TypeValue Type => TypeValue.Float;
+
+    public IValue Add(IValue other)
+    {
+        if (other is FloatValue iv) return new FloatValue(AsFloat() + GetOtherValue(iv));
+
+        throw new Exception($"Невозможно применить оператор '+' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Subtract(IValue other)
+    {
+        if (other is FloatValue fv) return new FloatValue(AsFloat() - GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '-' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Multiply(IValue other)
+    {
+        if (other is FloatValue fv) return new FloatValue(AsFloat() * GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '*' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Divide(IValue other)
+    {
+        if (other is FloatValue fv)
+        {
+            if (fv.AsFloat() == 0) throw new Exception("Данная операция возвращает деление на ноль.");
+            return new FloatValue(AsFloat() / GetOtherValue(fv));
+        }
+
+        throw new Exception($"Невозможно применить оператор '/' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Modulo(IValue other)
+    {
+        if (other is FloatValue fv) return new FloatValue(AsFloat() % GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '%' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Equals(IValue other)
+    {
+        if (other is FloatValue fv) return new BoolValue(AsFloat() == GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '==' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue NotEquals(IValue other)
+    {
+        if (other is FloatValue fv) return new BoolValue(AsFloat() != GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '!=' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Greater(IValue other)
+    {
+        if (other is FloatValue fv) return new BoolValue(AsFloat() > GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '>' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue GreaterEqual(IValue other)
+    {
+        if (other is FloatValue fv) return new BoolValue(AsFloat() >= GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '>=' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Less(IValue other)
+    {
+        if (other is FloatValue fv) return new BoolValue(AsFloat() < GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '<' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue LessEqual(IValue other)
+    {
+        if (other is FloatValue fv) return new BoolValue(AsFloat() <= GetOtherValue(fv));
+
+        throw new Exception($"Невозможно применить оператор '<=' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue And(IValue other)
+    {
+        throw new Exception($"Невозможно применить оператор '&&' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue Or(IValue other)
+    {
+        throw new Exception($"Невозможно применить оператор '||' с типом {Type} и {other.Type}.");
+    }
+
+    public string AsString() => Value.ToString();
+
+    private float AsFloat() => (float)Value;
+    private float GetOtherValue(FloatValue other)
+    {
+        if (other is FloatValue fv) return fv.AsFloat();
+
+        throw new Exception($"Несоответствие типов (тип {Type} и {other.Type}).");
+    }
+}
