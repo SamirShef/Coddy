@@ -28,6 +28,7 @@ public class Parser (List<Token> tokens)
     private IStatement ParseStatement()
     {
         if (Match(TokenType.Let)) return ParseVariableDeclaration();
+        if (Match(TokenType.Identifier)) return ParseAssignment();
 
         throw new Exception($"Неожиданный токен: {Peek()}.");
     }
@@ -46,8 +47,22 @@ public class Parser (List<Token> tokens)
         }
 
         Consume(TokenType.Semicolon, "Отсутствует токен, завершающий строку (';').");
-
+        
         return new VariableDeclarationStatement(variableStorage, identifierName, baseType, expression);
+    }
+
+    private IStatement ParseAssignment()
+    {
+        Token identifier = Peek(-1);
+        string identifierName = identifier.Value;
+
+        Consume(TokenType.Assign, "Отсутствует токен присвоения.");
+
+        IExpression expression = ParseExpression();
+
+        Consume(TokenType.Semicolon, "Отсутствует токен, завершающий строку (';').");
+
+        return new AssignmentStatement(variableStorage, identifierName, expression.Evaluate());
     }
 
     private IExpression ParseExpression() => ParseLogicalOr();
@@ -68,7 +83,128 @@ public class Parser (List<Token> tokens)
 
     private IExpression ParseLogicalAnd()
     {
+        IExpression expr = ParseEquality();
 
+        while (Match(TokenType.And))
+        {
+            IExpression right = ParseEquality();
+            expr = new BinaryExpression(new Token(TokenType.And, "&&"), expr, right);
+        }
+
+        return expr;
+    }
+
+    private IExpression ParseEquality()
+    {
+        IExpression expr = ParseComparison();
+
+        while (true)
+        {
+            if (Match(TokenType.Equals))
+                expr = new BinaryExpression(new Token(TokenType.Equals, "=="), expr, ParseComparison());
+            else if (Match(TokenType.NotEquals))
+                expr = new BinaryExpression(new Token(TokenType.NotEquals, "!="), expr, ParseComparison());
+            else
+                break;
+        }
+
+        return expr;
+    }
+
+    private IExpression ParseComparison()
+    {
+        IExpression expr = ParseAdditive();
+
+        while (true)
+        {
+            if (Match(TokenType.Greater)) expr = new BinaryExpression(new Token(TokenType.Greater, ">"), expr, ParseAdditive());
+            else if (Match(TokenType.GreaterEqual)) expr = new BinaryExpression(new Token(TokenType.GreaterEqual, ">="), expr, ParseAdditive());
+            else if (Match(TokenType.Less)) expr = new BinaryExpression(new Token(TokenType.Less, "<"), expr, ParseAdditive());
+            else if (Match(TokenType.LessEqual)) expr = new BinaryExpression(new Token(TokenType.LessEqual, "<="), expr, ParseAdditive());
+            else break;
+        }
+
+        return expr;
+    }
+
+    private IExpression ParseAdditive()
+    {
+        IExpression expr = ParseMultiplicative();
+
+        while (true)
+        {
+            if (Match(TokenType.Plus)) expr = new BinaryExpression(new Token(TokenType.Plus, "+"), expr, ParseMultiplicative());
+            else if (Match(TokenType.Minus)) expr = new BinaryExpression(new Token(TokenType.Minus, "-"), expr, ParseMultiplicative());
+            else break;
+        }
+
+        return expr;
+    }
+
+    private IExpression ParseMultiplicative()
+    {
+        IExpression expr = ParseUnary();
+
+        while (true)
+        {
+            if (Match(TokenType.Multiply)) expr = new BinaryExpression(new Token(TokenType.Multiply, "*"), expr, ParseUnary());
+            else if (Match(TokenType.Divide)) expr = new BinaryExpression(new Token(TokenType.Divide, "/"), expr, ParseUnary());
+            else if (Match(TokenType.Modulo)) expr = new BinaryExpression(new Token(TokenType.Modulo, "%"), expr, ParseUnary());
+            else break;
+        }
+
+        return expr;
+    }
+
+    private IExpression ParseUnary()
+    {
+        if (Match(TokenType.Minus))
+        {
+            return new UnaryExpression(new Token(TokenType.Minus, "-"), ParsePrimary());
+        }
+        if (Match(TokenType.Not))
+        {
+            return new UnaryExpression(new Token(TokenType.Not, "!"), ParsePrimary());
+        }
+        return ParsePrimary();
+    }
+
+    private IExpression ParsePrimary()
+    {
+        if (Match(TokenType.LParen))
+        {
+            IExpression expr = ParseExpression();
+            Consume(TokenType.RParen, "Ожидается закрывающая скобка ')'.");
+            return expr;
+        }
+
+        Token token = Peek();
+        switch (token.Type)
+        {
+            case TokenType.IntLiteral:
+                pos++;
+                return new LiteralExpression(new IntValue(int.Parse(token.Value)));
+            case TokenType.FloatLiteral:
+                pos++;
+                return new LiteralExpression(new FloatValue(float.Parse(token.Value)));
+            case TokenType.DoubleLiteral:
+                pos++;
+                return new LiteralExpression(new DoubleValue(double.Parse(token.Value)));
+            case TokenType.DecimalLiteral:
+                pos++;
+                return new LiteralExpression(new DecimalValue(decimal.Parse(token.Value)));
+            case TokenType.StringLiteral:
+                pos++;
+                return new LiteralExpression(new StringValue(token.Value));
+            case TokenType.BooleanLiteral:
+                pos++;
+                return new LiteralExpression(new BoolValue(bool.Parse(token.Value)));
+            case TokenType.Identifier:
+                pos++;
+                return new VariableExpression(variableStorage, token.Value);
+            default:
+                throw new Exception($"Неожиданный токен: '{token}'.");
+        }
     }
 
     private Token GetTypeToken()
@@ -90,10 +226,10 @@ public class Parser (List<Token> tokens)
         TokenType.Decimal => TypeValue.Decimal,
         TokenType.String => TypeValue.String,
         TokenType.Bool => TypeValue.Bool,
-        _ => throw new Exception($"Не удается получить тип переменной/поля.")
+        _ => throw new Exception($"Не удается получить тип переменной/поля ({type}).")
     };
 
-    private Token Peek(int relativePos = 0) => pos + relativePos < tokens.Count ? tokens[pos] : throw new IndexOutOfRangeException();
+    private Token Peek(int relativePos = 0) => pos + relativePos < tokens.Count ? tokens[pos + relativePos] : throw new IndexOutOfRangeException();
 
     private bool Match(TokenType type)
     {
@@ -108,7 +244,7 @@ public class Parser (List<Token> tokens)
 
     private Token Consume(TokenType type, string errorMessage)
     {
-        if (Match(type)) return Peek(-1);
+        if (Peek().Type == type) return tokens[pos++];
 
         throw new Exception(errorMessage);
     }

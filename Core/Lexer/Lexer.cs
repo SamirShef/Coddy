@@ -239,7 +239,7 @@ public class Lexer (string source)
         StringBuilder builder = new();
         char suffix = '\0';
 
-        while (char.IsDigit(source[pos]) || source[pos] == '.')
+        while (pos < source.Length && (char.IsDigit(source[pos]) || source[pos] == '.'))
         {
             if (source[pos] == '.')
             {
@@ -250,8 +250,8 @@ public class Lexer (string source)
             builder.Append(source[pos++]);
         }
 
-        char next = source[pos++];
-        switch (next)
+        char current = source[pos];
+        switch (current)
         {
             case 'f': suffix = 'f'; break;
             case 'd': suffix = 'd'; break;
@@ -260,6 +260,7 @@ public class Lexer (string source)
         }
 
         if (suffix == '\0' && builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа (число содержит точку, но не имеет суффикса 'f', 'd' или 'm'): {builder}.");
+        else if (suffix != '\0') pos++;
 
         return suffix switch
         {

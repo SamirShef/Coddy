@@ -4,7 +4,7 @@ namespace Core.Runtime;
 
 public class VariableStorage
 {
-    private readonly Stack<Dictionary<string, VariableInfo>> scopes;
+    private readonly Stack<Dictionary<string, VariableInfo>> scopes = [];
 
     public VariableStorage() => EnterScope();
 
@@ -21,24 +21,34 @@ public class VariableStorage
         var scope = scopes.Peek();
 
         if (scope.ContainsKey(name)) throw new Exception($"Объявление невозможно: переменная/поле '{name}' уже объявлена в текущем контексте.");
-
-        scope.Add(name, new VariableInfo(value ?? GetDefaultValue(type), type));
+        scope.Add(name, new VariableInfo(type, value ?? GetDefaultValue(type)));
+        Console.WriteLine($"{name} : {type}, {Get(name).Value.Value}");
     }
 
     public VariableInfo Get(string name)
     {
-        if (!scopes.Peek().TryGetValue(name, out VariableInfo? variableInfo)) throw new Exception($"Не удается получить значение переменной/поля с именем '{name}'. Переменная не объявлена.");
+        foreach (var scope in scopes) if (scope.TryGetValue(name, out VariableInfo? variableInfo)) return variableInfo;
 
-        return variableInfo;
+        throw new Exception($"Не удается получить значение переменной/поля с именем '{name}'. Переменная не объявлена.");
     }
 
     public void Set(string name, TypeValue type, IValue value)
     {
-        var scope = scopes.Peek();
+        foreach (var scope in scopes)
+        {
+            if (scope.ContainsKey(name)) scope[name] = new VariableInfo(type, value);
+            Console.WriteLine($"{name} ({type}) := {value.Value}");
+            return;
+        }
 
-        if (!scope.ContainsKey(name)) throw new Exception($"Не удается установить значение для переменной/поля с именем '{name}'. Переменная не объявлена.");
+        throw new Exception($"Не удается установить значение для переменной/поля с именем '{name}'. Переменная не объявлена.");
+    }
 
-        scope[name] = new VariableInfo(value, type);
+    public bool Exist(string name)
+    {
+        foreach (var scope in scopes) if (scope.ContainsKey(name)) return true;
+        Console.WriteLine($"AWDAWD {name}");
+        return false;
     }
 
     private IValue GetDefaultValue(TypeValue type) => type switch
@@ -49,12 +59,12 @@ public class VariableStorage
         TypeValue.Decimal => new DecimalValue(0m),
         TypeValue.String => new StringValue(""),
         TypeValue.Bool => new BoolValue(false),
-        _ => throw new Exception($"Не удается получить стандартное значение для типа переменной '{type}'.");
+        _ => throw new Exception($"Не удается получить стандартное значение для типа переменной '{type}'.")
     };
 }
 
-public class VariableInfo (IValue value, TypeValue type)
+public class VariableInfo (TypeValue type, IValue value)
 {
+    public TypeValue Type { get; set; } = type;
     public IValue Value { get; set; } = value;
-    private TypeValue Type { get; set; } = type;
 }
