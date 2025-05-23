@@ -26,44 +26,157 @@ public class Parser (List<Token> tokens)
     {
         if (Match(TokenType.Let)) return ParseVariableDeclaration();
         if (Match(TokenType.Identifier)) return ParseAssignment();
+        if (Match(TokenType.If)) return ParseIfElseStatement();
+        if (Match(TokenType.While)) return ParseWhileLoopStatement();
+        if (Match(TokenType.Do)) return ParseDoWhileLoopStatement();
+        if (Match(TokenType.For)) return ParseForLoopStatement();
+        if (Match(TokenType.Break)) return ParseBreakStatement();
+        if (Match(TokenType.Continue)) return ParseContinueStatement();
 
         throw new Exception($"Неожиданный токен: {Peek()}.");
     }
 
-    private IStatement ParseVariableDeclaration()
+    private IStatement ParseVariableDeclaration(bool fromForStatement = false)
     {
-        Token identifier = Consume(TokenType.Identifier, "Отсутствует токен идентификатора для объявления переменной/поля.");
+        Token identifier = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         string identifierName = identifier.Value;
-        Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом переменной/поля.");
+        Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
         Token baseTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления переменной/поля.");
         TypeValue baseType = GetTypeValueFromToken(baseTypeToken.Type);
         IExpression? expression = null;
         if (Match(TokenType.Assign)) expression = ParseExpression();
 
-        if (expression != null)
-        {
-            TypeValue exprType = expression.Evaluate().Type;
+        if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-            if (!IsTypeCompatible(baseType, exprType)) throw new Exception($"Невозможно преобразовать тип {exprType} в тип {baseType}");
-        }
-
-        Consume(TokenType.Semicolon, "Отсутствует токен, завершающий строку (';').");
-        
         return new VariableDeclarationStatement(variableStorage, identifierName, baseType, expression);
     }
 
-    private IStatement ParseAssignment()
+    private IStatement ParseAssignment(bool fromForStatement = false)
     {
-        Token identifier = Peek(-1);
-        string identifierName = identifier.Value;
+        Console.WriteLine(Peek());
+        string identifierName = Peek(-1).Value;
+        IExpression expression;
 
-        Consume(TokenType.Assign, "Отсутствует токен присвоения.");
+        if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
+        || Match(TokenType.MultiplyAssign) || Match(TokenType.DivideAssign)
+        || Match(TokenType.ModuloAssign) || Match(TokenType.Increment)
+        || Match(TokenType.Decrement))
+        {
+            Token opToken = Peek(-1);
 
-        IExpression expression = ParseExpression();
+            if (opToken.Type == TokenType.Increment || opToken.Type == TokenType.Decrement) expression = new LiteralExpression(new IntValue(1));
+            else expression = ParseExpression();
 
-        Consume(TokenType.Semicolon, "Отсутствует токен, завершающий строку (';').");
+            if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new AssignmentStatement(variableStorage, identifierName, expression.Evaluate());
+            return CreateCompoundAssignment(identifierName, opToken, expression);
+        }
+
+        Consume(TokenType.Assign, "Отсутствует токен оператора присвоения.");
+
+        expression = ParseExpression();
+
+        if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new AssignmentStatement(variableStorage, identifierName, expression);
+    }
+
+    private IStatement CreateCompoundAssignment(string varName, Token opToken, IExpression rightExpr)
+    {
+        var varExpr = new VariableExpression(variableStorage, varName);
+
+        BinaryExpression compoundExpr = opToken.Type switch
+        {
+            TokenType.PlusAssign => new BinaryExpression(new Token(TokenType.Plus, "+"), varExpr, rightExpr),
+            TokenType.MinusAssign => new BinaryExpression(new Token(TokenType.Minus, "-"), varExpr, rightExpr),
+            TokenType.MultiplyAssign => new BinaryExpression(new Token(TokenType.Multiply, "*"), varExpr, rightExpr),
+            TokenType.DivideAssign => new BinaryExpression(new Token(TokenType.Divide, "/"), varExpr, rightExpr),
+            TokenType.ModuloAssign => new BinaryExpression(new Token(TokenType.Modulo, "%"), varExpr, rightExpr),
+            TokenType.Increment => new BinaryExpression(new Token(TokenType.Plus, "+"), varExpr, rightExpr),
+            TokenType.Decrement => new BinaryExpression(new Token(TokenType.Minus, "-"), varExpr, rightExpr),
+            _ => throw new Exception($"Неподдерживаемый оператор: {opToken.Value}")
+        };
+
+        return new AssignmentStatement(variableStorage, varName, compoundExpr);
+    }
+
+    private IStatement ParseIfElseStatement()
+    {
+        Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
+        IExpression condition = ParseExpression();
+        Consume(TokenType.RParen, "Отсутствует токен окончания условного выражения ')'.");
+        IStatement ifBlock = ParseStatementOrBlock();
+        IStatement? elseBlock = null;
+        if (Match(TokenType.Else)) elseBlock = ParseStatementOrBlock();
+        
+        return new IfElseStatement(condition, ifBlock, elseBlock);
+    }
+
+    private IStatement ParseWhileLoopStatement()
+    {
+        Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
+        IExpression condition = ParseExpression();
+        Consume(TokenType.RParen, "Отсутствует токен окончания условного выражения ')'.");
+        IStatement block = ParseStatementOrBlock();
+
+        return new WhileLoopStatement(variableStorage, condition, block);
+    }
+
+    private IStatement ParseDoWhileLoopStatement()
+    {
+        IStatement block = ParseStatementOrBlock();
+        Consume(TokenType.While, "Отсутствует токен начала условной части цикла do/while 'while'.");
+        Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
+        IExpression condition = ParseExpression();
+        Consume(TokenType.RParen, "Отсутствует токен окончания условного выражения ')'.");
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new DoWhileLoopStatement(variableStorage, condition, block);
+    }
+
+    private IStatement ParseForLoopStatement()
+    {
+        Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
+
+        Consume(TokenType.Let, "Отсутствует токен объявления индексатора 'let'.");
+        IStatement indexatorDeclaration = ParseVariableDeclaration(true);
+        Consume(TokenType.Colon, "Отсутствует токен разделения параметров цикла for ':'.");
+        IExpression condition = ParseExpression();
+        Consume(TokenType.Colon, "Отсутствует токен разделения параметров цикла for ':'.");
+        Consume(TokenType.Identifier, "Отсутствует токен идентификатора для определения поведения итератора.");
+        IStatement iterator = ParseAssignment(true);
+        
+        Consume(TokenType.RParen, "Отсутствует токен окончания условного выражения ')'.");
+
+        IStatement block = ParseStatementOrBlock();
+
+        return new ForLoopStatement(variableStorage, indexatorDeclaration, condition, iterator, block);
+    }
+
+    private IStatement ParseBreakStatement()
+    {
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new BreakStatement();
+    }
+
+    private IStatement ParseContinueStatement()
+    {
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new ContinueStatement();
+    }
+
+    private IStatement ParseStatementOrBlock()
+    {
+        variableStorage.EnterScope();
+        if (Peek().Type != TokenType.LBrace) return ParseStatement();
+        Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
+        List<IStatement> block = [];
+        while (Peek().Type != TokenType.RBrace) block.Add(ParseStatement());
+        Consume(TokenType.RBrace, "Отсутствует токен окончания блока операторов '}'.");
+        variableStorage.ExitScope();
+        return new BlockStatement(block);
     }
 
     private IExpression ParseExpression() => ParseLogicalOr();

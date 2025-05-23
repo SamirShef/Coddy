@@ -4,7 +4,7 @@ public enum TokenType
 {
     Identifier,
 
-    Class, Let, Func, Return,
+    Class, Let, Func, If, Else, While, Do, For, Break, Continue, Return,
 
     Int, Float, Double, Decimal, Bool, String,
     IntLiteral, FloatLiteral, DoubleLiteral, DecimalLiteral, StringLiteral, BooleanLiteral,

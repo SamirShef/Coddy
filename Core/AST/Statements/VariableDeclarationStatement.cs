@@ -11,5 +11,16 @@ public class VariableDeclarationStatement(VariableStorage variableStorage, strin
     private readonly TypeValue type = type;
     private readonly IExpression? expression = expression;
 
-    public void Execute() => variableStorage.Declare(name, type, expression?.Evaluate());
+    public void Execute()
+    {
+        IValue? value = expression?.Evaluate();
+        if (value != null)
+        {
+            TypeValue exprType = value.Type;
+
+            if (!Parser.Parser.IsTypeCompatible(type, exprType)) throw new Exception($"Невозможно преобразовать тип {exprType} в тип {type}");
+        }
+
+        variableStorage.Declare(name, type, value);
+    }
 }

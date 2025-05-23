@@ -18,7 +18,14 @@ public class Lexer (string source)
         { "string", TokenType.String },
         { "boolean", TokenType.Bool },
         { "func", TokenType.Func },
-        { "return", TokenType.Return }
+        { "if", TokenType.If },
+        { "else", TokenType.Else },
+        { "while", TokenType.While },
+        { "do", TokenType.Do },
+        { "for", TokenType.For },
+        { "break", TokenType.Break },
+        { "continue", TokenType.Continue },
+        { "return", TokenType.Return },
     };
 
     public IEnumerable<Token> Tokenize()
@@ -250,7 +257,7 @@ public class Lexer (string source)
             builder.Append(source[pos++]);
         }
 
-        char current = source[pos];
+        char current = pos < source.Length ? source[pos] : '\0';
         switch (current)
         {
             case 'f': suffix = 'f'; break;

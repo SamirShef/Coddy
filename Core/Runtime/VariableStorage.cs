@@ -36,9 +36,12 @@ public class VariableStorage
     {
         foreach (var scope in scopes)
         {
-            if (scope.ContainsKey(name)) scope[name] = new VariableInfo(type, value);
-            Console.WriteLine($"{name} ({type}) := {value.Value}");
-            return;
+            if (scope.ContainsKey(name))
+            {
+                scope[name] = new VariableInfo(type, value);
+                Console.WriteLine($"{name} ({type}) := {value.Value}");
+                return;
+            }
         }
 
         throw new Exception($"Не удается установить значение для переменной/поля с именем '{name}'. Переменная не объявлена.");
@@ -47,7 +50,6 @@ public class VariableStorage
     public bool Exist(string name)
     {
         foreach (var scope in scopes) if (scope.ContainsKey(name)) return true;
-        Console.WriteLine($"AWDAWD {name}");
         return false;
     }
 

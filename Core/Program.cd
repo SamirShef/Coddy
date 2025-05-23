@@ -1,1 +1,6 @@
-let a : float = 2.2d;
+let a : int;
+
+do
+{
+	a++;
+} while (a < 10);
