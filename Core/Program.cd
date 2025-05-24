@@ -1,3 +1,8 @@
-func a : int() { return 2; }
+class Test
+{
+	pub let a : int;
+	pub func print() { println(2); }
+}
 
-let a : int = a(1);
+let a : Test = new Test();
+println(a.a);
