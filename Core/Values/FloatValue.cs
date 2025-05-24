@@ -7,7 +7,7 @@ public class FloatValue(float value) : IValue
 
     public IValue Add(IValue other)
     {
-        if (other is FloatValue iv) return new FloatValue(AsFloat() + GetOtherValue(iv));
+        if (other is FloatValue fv) return new FloatValue(AsFloat() + GetOtherValue(fv));
 
         throw new Exception($"Невозможно применить оператор '+' с типом {Type} и {other.Type}.");
     }
@@ -46,6 +46,7 @@ public class FloatValue(float value) : IValue
 
     public IValue Equals(IValue other)
     {
+        if (other is IntValue iv) return new BoolValue(AsFloat() == GetOtherValue(iv));
         if (other is FloatValue fv) return new BoolValue(AsFloat() == GetOtherValue(fv));
 
         throw new Exception($"Невозможно применить оператор '==' с типом {Type} и {other.Type}.");
@@ -98,9 +99,10 @@ public class FloatValue(float value) : IValue
 
     public string AsString() => Value.ToString();
 
-    private float AsFloat() => (float)Value;
-    private float GetOtherValue(FloatValue other)
+    public float AsFloat() => (float)Value;
+    private float GetOtherValue(IValue other)
     {
+        if (other is IntValue iv) return iv.AsInt();
         if (other is FloatValue fv) return fv.AsFloat();
 
         throw new Exception($"Несоответствие типов (тип {Type} и {other.Type}).");

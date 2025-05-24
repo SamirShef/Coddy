@@ -14,7 +14,6 @@ public class Parser (List<Token> tokens)
 
     private readonly VariableStorage variableStorage = new();
     private readonly FunctionStorage functionStorage = new();
-    private readonly ClassStorage classStorage = new();
 
     public List<IStatement> Parse()
     {
@@ -27,7 +26,6 @@ public class Parser (List<Token> tokens)
 
     private IStatement ParseStatement()
     {
-        if (Match(TokenType.Class)) return ParseClassDeclaration();
         if (Match(TokenType.Let)) return ParseVariableDeclaration();
         if (Match(TokenType.Identifier))
         {
@@ -44,72 +42,6 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Return)) return ParseReturnStatement();
 
         throw new Exception($"Неожиданный токен: {Peek()}.");
-    }
-
-    private IStatement ParseClassDeclaration()
-    {
-        Token classNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-        Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
-
-        List<FieldDeclarationStatement> fields = [];
-        List<MethodDeclarationStatement> methods = [];
-
-        while (!Match(TokenType.RBrace))
-        {
-            AccessModifier access = AccessModifier.Private;
-            if (Match(TokenType.Private)) Match(TokenType.Private);
-            else if (Match(TokenType.Public)) access = AccessModifier.Public;
-
-            if (Match(TokenType.Func)) methods.Add(ParseMethodDeclaration(access, classNameToken));
-            else fields.Add(ParseFieldDeclaration(access, classNameToken));
-        }
-
-        return new ClassDeclarationStatement(classStorage, classNameToken.Value, fields, methods);
-    }
-
-    private FieldDeclarationStatement ParseFieldDeclaration(AccessModifier access, Token classNameToken)
-    {
-        Consume(TokenType.Let, "Отсутствует токен объявления поля 'let'.");
-        Token nameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-        Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
-        Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления поля.");
-        TypeValue type = GetTypeValueFromToken(typeToken.Type);
-        IExpression? initializer = null;
-
-        if (Match(TokenType.Assign))
-            initializer = ParseExpression();
-
-        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
-
-        return new FieldDeclarationStatement(classStorage, classNameToken.Value, access, type, nameToken.Value, initializer);
-    }
-
-    private MethodDeclarationStatement ParseMethodDeclaration(AccessModifier access, Token classNameToken)
-    {
-        Token nameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-        TypeValue returnType = TypeValue.Void;
-
-        if (Match(TokenType.Colon))
-        {
-            Token typeToken = GetTypeToken();
-            returnType = GetTypeValueFromToken(typeToken.Type);
-        }
-
-        Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-        List<(string, TypeValue)> parameters = [];
-
-        while (!Match(TokenType.RParen))
-        {
-            if (parameters.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
-            Token paramName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-            Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
-            Token paramType = GetTypeToken();
-            parameters.Add((paramName.Value, GetTypeValueFromToken(paramType.Type)));
-        }
-
-        IStatement body = ParseStatementOrBlock();
-
-        return new MethodDeclarationStatement(classStorage, classNameToken.Value, access, nameToken.Value, returnType, parameters, body);
     }
 
     private IStatement ParseVariableDeclaration(bool fromForStatement = false)
@@ -149,13 +81,6 @@ public class Parser (List<Token> tokens)
     private IStatement ParseAssignment(bool fromForStatement = false)
     {
         string identifierName = Peek(-1).Value;
-
-        while (Match(TokenType.Dot))
-        {
-            Token fieldName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-            identifierName += $".{fieldName.Value}";
-        }
-
         IExpression expression;
 
         if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
@@ -271,7 +196,6 @@ public class Parser (List<Token> tokens)
     {
         Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
 
-        Consume(TokenType.Let, "Отсутствует токен объявления индексатора 'let'.");
         IStatement indexatorDeclaration = ParseVariableDeclaration(true);
         Consume(TokenType.Colon, "Отсутствует токен разделения параметров цикла for ':'.");
         IExpression condition = ParseExpression();
@@ -450,20 +374,9 @@ public class Parser (List<Token> tokens)
             case TokenType.Identifier:
                 pos++;
 
-                if (Match(TokenType.Dot))
-                {
-                    Token memberName = Consume(TokenType.Identifier, $"Отсутствует токен идентификатора члена класса {token.Value}.");
-                    return new MemberAccessExpression(new VariableExpression(variableStorage, token.Value), memberName.Value);
-                }
                 if (Peek().Type == TokenType.LParen) return ParseFunctionCall(token.Value);
-
+                
                 return new VariableExpression(variableStorage, token.Value);
-            case TokenType.New:
-                pos++;
-                Token className = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-                Consume(TokenType.LParen, "Отсутствует токен начала перечисления параметров конструктора '('.");
-                Consume(TokenType.RParen, "Отсутствует токен окончания перечисления параметров конструктора ')'.");
-                return new NewExpression(classStorage, className.Value);
             default:
                 throw new Exception($"Неожиданный токен: '{token}'.");
         }
@@ -509,14 +422,31 @@ public class Parser (List<Token> tokens)
         _ => false
     };
 
+    public static IValue ConvertValue(IValue value, TypeValue targetType)
+    {
+        if (value.Type == targetType) return value;
+
+        return (value, targetType) switch
+        {
+            (IntValue iv, TypeValue.Float) => new FloatValue(iv.AsInt()),
+            (IntValue iv, TypeValue.Double) => new DoubleValue(iv.AsInt()),
+            (IntValue iv, TypeValue.Decimal) => new DecimalValue(iv.AsInt()),
+            (FloatValue fv, TypeValue.Double) => new DoubleValue(fv.AsFloat()),
+            (FloatValue fv, TypeValue.Decimal) => new DecimalValue((decimal)fv.AsFloat()),
+            (DoubleValue dv, TypeValue.Float) => new FloatValue((float)dv.AsDouble()),
+            (DoubleValue dv, TypeValue.Decimal) => new DecimalValue((decimal)dv.AsDouble()),
+            _ => throw new Exception($"Нельзя преобразовать {value.Type} в {targetType}")
+        };
+    }
+
     private Token GetTypeToken()
     {
         Token current = Peek();
 
         return current.Type switch
         {
-            TokenType.Int or TokenType.Float or TokenType.Double or TokenType.Decimal or TokenType.String or TokenType.Bool or TokenType.Identifier => current,
-            _ => throw new Exception($"Текущий токен не является типом ({current.Type}).")
+            TokenType.Int or TokenType.Float or TokenType.Double or TokenType.Decimal or TokenType.String or TokenType.Bool => current,
+            _ => throw new Exception("Текущий токен не является типом.")
         };
     }
 
@@ -528,7 +458,6 @@ public class Parser (List<Token> tokens)
         TokenType.Decimal => TypeValue.Decimal,
         TokenType.String => TypeValue.String,
         TokenType.Bool => TypeValue.Bool,
-        TokenType.Identifier => TypeValue.Class,
         _ => throw new Exception($"Не удается получить тип переменной/поля ({type}).")
     };
 

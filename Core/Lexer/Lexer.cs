@@ -26,9 +26,6 @@ public class Lexer (string source)
         { "break", TokenType.Break },
         { "continue", TokenType.Continue },
         { "return", TokenType.Return },
-        { "priv", TokenType.Private },
-        { "pub", TokenType.Public },
-        { "new", TokenType.New },
     };
 
     public IEnumerable<Token> Tokenize()
@@ -253,7 +250,7 @@ public class Lexer (string source)
         {
             if (source[pos] == '.')
             {
-                if (builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа (число содержит две точки): {builder}.");
+                if (builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа: число содержит две и более точек: {builder}.");
                 else if (builder.Length == 0) builder.Append('0');
             }
 
@@ -269,7 +266,7 @@ public class Lexer (string source)
             default: break;
         }
 
-        if (suffix == '\0' && builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа (число содержит точку, но не имеет суффикса 'f', 'd' или 'm'): {builder}.");
+        if (suffix == '\0' && builder.ToString().Contains('.')) throw new Exception($"Некорректный формат числа: число содержит точку, но не имеет суффикса 'f', 'd' или 'm': {builder}.");
         else if (suffix != '\0') pos++;
 
         return suffix switch

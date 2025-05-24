@@ -98,7 +98,7 @@ public class IntValue(int value) : IValue
 
     public string AsString() => Value.ToString();
 
-    private int AsInt() => (int)Value;
+    public int AsInt() => (int)Value;
     private int GetOtherValue(IntValue other)
     {
         if (other is IntValue iv) return iv.AsInt();

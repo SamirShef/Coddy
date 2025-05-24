@@ -98,7 +98,7 @@ public class DoubleValue(double value) : IValue
 
     public string AsString() => Value.ToString();
 
-    private double AsDouble() => (float)Value;
+    public double AsDouble() => (float)Value;
     private double GetOtherValue(DoubleValue other)
     {
         if (other is DoubleValue dv) return dv.AsDouble();

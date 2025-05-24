@@ -98,7 +98,7 @@ public class DecimalValue(decimal value) : IValue
 
     public string AsString() => Value.ToString();
 
-    private decimal AsDecimal() => (decimal)Value;
+    public decimal AsDecimal() => (decimal)Value;
     private decimal GetOtherValue(DecimalValue other)
     {
         if (other is DecimalValue dv) return dv.AsDecimal();

@@ -12,7 +12,7 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
 
     public IValue Execute(params IValue[] args)
     {
-        if (args.Length != parameters.Count) throw new Exception($"Функция/метод '{name}()' ожидала {parameters.Count} аргумент, а получила {args.Length}.");
+        if (args.Length != parameters.Count) throw new Exception($"Функция '{name}()' ожидала {parameters.Count} аргумент, а получила {args.Length}.");
 
         variableStorage.EnterScope();
         try
@@ -24,7 +24,8 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
 
                 if (!Parser.Parser.IsTypeCompatible(type, argValue.Type)) throw new Exception($"Несовместимый тип аргумента '{name}'.");
 
-                variableStorage.Declare(name, type, argValue);
+
+                variableStorage.Declare(name, type, Parser.Parser.ConvertValue(argValue, type));
             }
 
             body.Execute();
@@ -33,7 +34,7 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
         }
         catch (ReturnException ret)
         {
-            if (ReturnType == TypeValue.Void && ret.Value != null) throw new Exception("Функция/метод не должен возвращать значение.");
+            if (ReturnType == TypeValue.Void && ret.Value != null) throw new Exception("Функция не должен возвращать значение.");
 
             if (ReturnType != TypeValue.Void && ret.Value == null) throw new Exception("Не все пути возвращают значения.");
 
