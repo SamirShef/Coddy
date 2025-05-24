@@ -149,6 +149,13 @@ public class Parser (List<Token> tokens)
     private IStatement ParseAssignment(bool fromForStatement = false)
     {
         string identifierName = Peek(-1).Value;
+
+        while (Match(TokenType.Dot))
+        {
+            Token fieldName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            identifierName += $".{fieldName.Value}";
+        }
+
         IExpression expression;
 
         if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
@@ -443,12 +450,12 @@ public class Parser (List<Token> tokens)
             case TokenType.Identifier:
                 pos++;
 
-                if (Peek().Type == TokenType.LParen) return ParseFunctionCall(token.Value);
                 if (Match(TokenType.Dot))
                 {
                     Token memberName = Consume(TokenType.Identifier, $"Отсутствует токен идентификатора члена класса {token.Value}.");
                     return new MemberAccessExpression(new VariableExpression(variableStorage, token.Value), memberName.Value);
                 }
+                if (Peek().Type == TokenType.LParen) return ParseFunctionCall(token.Value);
 
                 return new VariableExpression(variableStorage, token.Value);
             case TokenType.New:

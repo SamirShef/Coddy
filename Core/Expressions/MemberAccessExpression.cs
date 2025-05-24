@@ -9,12 +9,14 @@ public class MemberAccessExpression(IExpression objectExpr, string name) : IExpr
 
     public IValue Evaluate()
     {
-        var obj = objectExpr.Evaluate() as ObjectValue ?? throw new Exception("Object expected");
+        var obj = objectExpr.Evaluate() as ObjectValue ?? throw new Exception("Ожидался объект.");
+
+        if (obj.InstanceFields.TryGetValue(name, out var value)) return value;
 
         if (obj.ClassInfo.Fields.TryGetValue(name, out var field)) return field.Value;
 
         if (obj.ClassInfo.Methods.TryGetValue(name, out var method)) return new MethodReferenceValue(method);
 
-        throw new Exception($"Member '{name}' not found in class");
+        throw new Exception($"Член '{name}' не был найдет в классе.");
     }
 }

@@ -5,8 +5,17 @@ namespace Core.Values;
 public class ObjectValue(ClassInfo classInfo) : IValue
 {
     public ClassInfo ClassInfo { get; } = classInfo;
+    public Dictionary<string, IValue> InstanceFields { get; } = [];
     public object Value { get => ClassInfo; set => throw new Exception("Нельзя модифицировать экземпляр класса."); }
     public TypeValue Type => TypeValue.Class;
+
+    public void InitializeFields()
+    {
+        foreach (var field in ClassInfo.Fields)
+        {
+            InstanceFields[field.Key] = field.Value.Value ?? GetDefaultValue(field.Value.Type);
+        }
+    }
 
     public IValue Add(IValue other)
     {
@@ -74,4 +83,15 @@ public class ObjectValue(ClassInfo classInfo) : IValue
     }
 
     public string AsString() => Value.ToString();
+
+    private IValue GetDefaultValue(TypeValue type) => type switch
+    {
+        TypeValue.Int => new IntValue(0),
+        TypeValue.Float => new FloatValue(0f),
+        TypeValue.Double => new DoubleValue(0d),
+        TypeValue.Decimal => new DecimalValue(0m),
+        TypeValue.String => new StringValue(""),
+        TypeValue.Bool => new BoolValue(false),
+        _ => throw new Exception($"Не удается получить стандартное значение для типа переменной '{type}'.")
+    };
 }
