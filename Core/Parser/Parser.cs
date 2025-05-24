@@ -1,8 +1,9 @@
 ﻿using Core.AST.Statements;
 using Core.Expressions;
-using Core.Lexer;
+using Core.Runtime.Functions;
 using Core.Runtime;
 using Core.Values;
+using Core.Lexer;
 
 namespace Core.Parser;
 
@@ -12,6 +13,7 @@ public class Parser (List<Token> tokens)
     private int pos;
 
     private readonly VariableStorage variableStorage = new();
+    private readonly FunctionStorage functionStorage = new();
 
     public List<IStatement> Parse()
     {
@@ -25,13 +27,19 @@ public class Parser (List<Token> tokens)
     private IStatement ParseStatement()
     {
         if (Match(TokenType.Let)) return ParseVariableDeclaration();
-        if (Match(TokenType.Identifier)) return ParseAssignment();
+        if (Match(TokenType.Identifier))
+        {
+            if (Match(TokenType.LParen)) return ParseFunctionCallStatement();
+            return ParseAssignment();
+        }
+        if (Match(TokenType.Func)) return ParseFunctionDeclaration();
         if (Match(TokenType.If)) return ParseIfElseStatement();
         if (Match(TokenType.While)) return ParseWhileLoopStatement();
         if (Match(TokenType.Do)) return ParseDoWhileLoopStatement();
         if (Match(TokenType.For)) return ParseForLoopStatement();
         if (Match(TokenType.Break)) return ParseBreakStatement();
         if (Match(TokenType.Continue)) return ParseContinueStatement();
+        if (Match(TokenType.Return)) return ParseReturnStatement();
 
         throw new Exception($"Неожиданный токен: {Peek()}.");
     }
@@ -51,9 +59,27 @@ public class Parser (List<Token> tokens)
         return new VariableDeclarationStatement(variableStorage, identifierName, baseType, expression);
     }
 
+    private IStatement ParseFunctionCallStatement()
+    {
+        Token identifier = Peek(-2);
+        List<IExpression> args = ParseArguments();
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+        return new FunctionCallStatement(functionStorage, identifier.Value, args);
+    }
+
+    private List<IExpression> ParseArguments()
+    {
+        List<IExpression> args = [];
+        while (!Match(TokenType.RParen))
+        {
+            if (args.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
+            args.Add(ParseExpression());
+        }
+        return args;
+    }
+
     private IStatement ParseAssignment(bool fromForStatement = false)
     {
-        Console.WriteLine(Peek());
         string identifierName = Peek(-1).Value;
         IExpression expression;
 
@@ -98,6 +124,38 @@ public class Parser (List<Token> tokens)
         };
 
         return new AssignmentStatement(variableStorage, varName, compoundExpr);
+    }
+
+    private IStatement ParseFunctionDeclaration()
+    {
+        Token nameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+        TypeValue returnType = TypeValue.Void;
+
+        if (Match(TokenType.Colon))
+        {
+            Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления функции/метода.");
+            returnType = GetTypeValueFromToken(typeToken.Type);
+        }
+
+        Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+        var parameters = new List<(string, TypeValue)>();
+
+        while (!Match(TokenType.RParen))
+        {
+            if (parameters.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
+
+            Token paramName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
+            Token paramType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра функции/метода.");
+
+            parameters.Add((paramName.Value, GetTypeValueFromToken(paramType.Type)));
+        }
+
+        IStatement body = ParseStatementOrBlock();
+
+        var function = new UserFunction(nameToken.Value, returnType, parameters, body, variableStorage);
+
+        return new FunctionDeclarationStatement(functionStorage, nameToken.Value, function);
     }
 
     private IStatement ParseIfElseStatement()
@@ -165,6 +223,15 @@ public class Parser (List<Token> tokens)
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
         return new ContinueStatement();
+    }
+
+    private IStatement ParseReturnStatement()
+    {
+        IExpression? expr = null;
+        if (Peek().Type != TokenType.Semicolon) expr = ParseExpression();
+
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+        return new ReturnStatement(expr);
     }
 
     private IStatement ParseStatementOrBlock()
@@ -280,7 +347,7 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.LParen))
         {
             IExpression expr = ParseExpression();
-            Consume(TokenType.RParen, "Ожидается закрывающая скобка ')'.");
+            Consume(TokenType.RParen, "Отсутствует токен закрывающей скобки ')'.");
             return expr;
         }
 
@@ -307,10 +374,27 @@ public class Parser (List<Token> tokens)
                 return new LiteralExpression(new BoolValue(bool.Parse(token.Value)));
             case TokenType.Identifier:
                 pos++;
+
+                if (Peek().Type == TokenType.LParen) return ParseFunctionCall(token.Value);
+                
                 return new VariableExpression(variableStorage, token.Value);
             default:
                 throw new Exception($"Неожиданный токен: '{token}'.");
         }
+    }
+
+    private IExpression ParseFunctionCall(string functionName)
+    {
+        Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+        List<IExpression> args = [];
+
+        while (!Match(TokenType.RParen))
+        {
+            if (args.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
+            args.Add(ParseExpression());
+        }
+
+        return new FunctionCallExpression(functionStorage, functionName, args);
     }
 
     public static bool IsTypeCompatible(TypeValue left, TypeValue right) => left switch
@@ -335,7 +419,7 @@ public class Parser (List<Token> tokens)
         TypeValue.String => right == TypeValue.String,
         TypeValue.Bool => right == TypeValue.Bool,
         TypeValue.Class => right == TypeValue.Class,
-
+        TypeValue.Void => false,
         _ => false
     };
 

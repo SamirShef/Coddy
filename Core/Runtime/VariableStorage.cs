@@ -20,16 +20,15 @@ public class VariableStorage
     {
         var scope = scopes.Peek();
 
-        if (scope.ContainsKey(name)) throw new Exception($"Объявление невозможно: переменная/поле '{name}' уже объявлена в текущем контексте.");
+        if (scope.ContainsKey(name)) throw new Exception($"Объявление невозможно: переменная/поле '{name}' уже объявлено в текущем контексте.");
         scope.Add(name, new VariableInfo(type, value ?? GetDefaultValue(type)));
-        Console.WriteLine($"{name} : {type}, {Get(name).Value.Value}");
     }
 
     public VariableInfo Get(string name)
     {
         foreach (var scope in scopes) if (scope.TryGetValue(name, out VariableInfo? variableInfo)) return variableInfo;
 
-        throw new Exception($"Не удается получить значение переменной/поля с именем '{name}'. Переменная не объявлена.");
+        throw new Exception($"Не удается получить значение переменной/поля с именем '{name}'. Переменная/поле не объявлено.");
     }
 
     public void Set(string name, TypeValue type, IValue value)
@@ -39,7 +38,6 @@ public class VariableStorage
             if (scope.ContainsKey(name))
             {
                 scope[name] = new VariableInfo(type, value);
-                Console.WriteLine($"{name} ({type}) := {value.Value}");
                 return;
             }
         }

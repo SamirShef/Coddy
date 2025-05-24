@@ -23,6 +23,7 @@ public class WhileLoopStatement(VariableStorage variableStorage, IExpression con
                 try { block.Execute(); }
                 catch (BreakStatement) { break; }
                 catch (ContinueStatement) { continue; }
+                catch (ReturnException) { throw; }
             }
             finally { variableStorage.ExitScope(); }
         }

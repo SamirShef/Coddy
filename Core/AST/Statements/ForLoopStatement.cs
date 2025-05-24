@@ -27,6 +27,7 @@ public class ForLoopStatement(VariableStorage variableStorage, IStatement indexa
                 try { block.Execute(); iterator.Execute(); }
                 catch (BreakStatement) { break; }
                 catch (ContinueStatement) { iterator.Execute(); continue; }
+                catch (ReturnException) { throw; }
             }
             finally { variableStorage.ExitScope(); }
         }

@@ -18,7 +18,7 @@ public class VariableDeclarationStatement(VariableStorage variableStorage, strin
         {
             TypeValue exprType = value.Type;
 
-            if (!Parser.Parser.IsTypeCompatible(type, exprType)) throw new Exception($"Невозможно преобразовать тип {exprType} в тип {type}");
+            if (!Parser.Parser.IsTypeCompatible(type, exprType)) throw new Exception($"Невозможно преобразовать тип {exprType} в тип {type}.");
         }
 
         variableStorage.Declare(name, type, value);
