@@ -20,8 +20,8 @@ public class VariableStorage
     {
         var scope = scopes.Peek();
 
-        if (scope.ContainsKey(name)) throw new Exception($"Объявление невозможно: переменная '{name}' уже объявлена в текущем контексте.");
-        scope.Add(name, new VariableInfo(type, value ?? GetDefaultValue(type)));
+        if (scope.ContainsKey(name)) throw new Exception($"Объявление переменной невозможно: переменная '{name}' уже объявлена в текущем контексте.");
+        scope.Add(name, new VariableInfo(type, value ?? Helpers.GetDefaultValue(type)));
     }
 
     public VariableInfo Get(string name)
@@ -50,17 +50,6 @@ public class VariableStorage
         foreach (var scope in scopes) if (scope.ContainsKey(name)) return true;
         return false;
     }
-
-    private IValue GetDefaultValue(TypeValue type) => type switch
-    {
-        TypeValue.Int => new IntValue(0),
-        TypeValue.Float => new FloatValue(0f),
-        TypeValue.Double => new DoubleValue(0d),
-        TypeValue.Decimal => new DecimalValue(0m),
-        TypeValue.String => new StringValue(""),
-        TypeValue.Bool => new BoolValue(false),
-        _ => throw new Exception($"Не удается получить стандартное значение для типа переменной '{type}'.")
-    };
 }
 
 public class VariableInfo (TypeValue type, IValue value)

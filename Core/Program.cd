@@ -1,0 +1,7 @@
+class Test
+{
+	public let a : int;
+}
+
+let a : Test = new Test();
+a.a = 1;

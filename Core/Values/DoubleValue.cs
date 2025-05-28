@@ -3,7 +3,7 @@
 public class DoubleValue(double value) : IValue
 {
     public object Value { get; set; } = value;
-    public TypeValue Type => TypeValue.Float;
+    public TypeValue Type => TypeValue.Double;
 
     public IValue Add(IValue other)
     {
