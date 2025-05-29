@@ -19,7 +19,7 @@ public class FunctionStorage
 
     public IFunction Get(string name)
     {
-        if (!functions.ContainsKey(name)) throw new Exception($"Не удается вызвать функцию с именем '{name}'. Функция не объявлен.");
+        if (!functions.ContainsKey(name)) throw new Exception($"Не удается вызвать функцию с именем '{name}'. Функция не объявлена.");
 
         return functions[name];
     }

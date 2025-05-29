@@ -1,14 +1,16 @@
 ﻿using Core.AST.Statements;
+using Core.Runtime.OOP;
 using Core.Values;
 
 namespace Core.Runtime.Functions;
 
-public class UserFunction(string name, TypeValue returnType, List<(string, TypeValue)> parameters, IStatement body, VariableStorage variableStorage) : IFunction
+public class UserFunction(string name, TypeValue returnType, List<(string, TypeValue)> parameters, IStatement body, VariableStorage variableStorage, ClassInfo? classInfo = null) : IFunction
 {
     public TypeValue ReturnType { get; } = returnType;
     private readonly List<(string, TypeValue)> parameters = parameters;
     private readonly IStatement body = body;
     private readonly VariableStorage variableStorage = variableStorage;
+    private readonly ClassInfo? classInfo = classInfo;
 
     public IValue Execute(params IValue[] args)
     {
@@ -17,6 +19,8 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
         variableStorage.EnterScope();
         try
         {
+            if (classInfo is not null) variableStorage.Declare("this", TypeValue.Class, new ClassValue(new ClassInstance(classInfo)));
+
             for (int i = 0; i < parameters.Count; i++)
             {
                 var (name, type) = parameters[i];

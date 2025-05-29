@@ -32,10 +32,15 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Let)) return ParseVariableDeclaration();
         if (Match(TokenType.Identifier))
         {
+            if (Peek().Type == TokenType.Dot)
+            {
+                IExpression target = new VariableExpression(variableStorage, Peek(-1).Value);
+                return ParseMethodCallOrFieldAssignment(target);
+            }
             if (Match(TokenType.LParen)) return ParseFunctionCallStatement();
-            return ParseAssignment();
+            return ParseAssignmentStatement();
         }
-        if (Match(TokenType.Func)) return ParseFunctionDeclaration();
+        if (Match(TokenType.Func)) return ParseFunctionDeclarationStatement();
         if (Match(TokenType.If)) return ParseIfElseStatement();
         if (Match(TokenType.While)) return ParseWhileLoopStatement();
         if (Match(TokenType.Do)) return ParseDoWhileLoopStatement();
@@ -161,7 +166,7 @@ public class Parser (List<Token> tokens)
         return args;
     }
 
-    private IStatement ParseAssignment(bool fromForStatement = false)
+    private IStatement ParseAssignmentStatement(bool fromForStatement = false)
     {
         string identifierName = Peek(-1).Value;
 
@@ -269,7 +274,7 @@ public class Parser (List<Token> tokens)
         return new AssignmentStatement(variableStorage, varName, compoundExpr);
     }
 
-    private IStatement ParseFunctionDeclaration()
+    private IStatement ParseFunctionDeclarationStatement()
     {
         Token nameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         TypeValue returnType = TypeValue.Void;
@@ -344,7 +349,7 @@ public class Parser (List<Token> tokens)
         IExpression condition = ParseExpression();
         Consume(TokenType.Colon, "Отсутствует токен разделения параметров цикла for ':'.");
         Consume(TokenType.Identifier, "Отсутствует токен идентификатора для определения поведения итератора.");
-        IStatement iterator = ParseAssignment(true);
+        IStatement iterator = ParseAssignmentStatement(true);
         
         Consume(TokenType.RParen, "Отсутствует токен окончания условного выражения ')'.");
 
@@ -563,6 +568,26 @@ public class Parser (List<Token> tokens)
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
 
         return new FunctionCallExpression(functionStorage, functionName, ParseArguments());
+    }
+
+    private IStatement ParseMethodCallOrFieldAssignment(IExpression target)
+    {
+        while (Match(TokenType.Dot))
+        {
+            Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            
+            if (Peek().Type == TokenType.LParen)
+            {
+                Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+                List<IExpression> args = ParseArguments();
+                Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+                return new MethodCallStatement(new MethodCallExpression(target, fieldToken.Value, args));
+            }
+            
+            target = new FieldExpression(fieldToken.Value, target);
+        }
+
+        return ParseFieldAssignmentStatement(target, false);
     }
 
     public static bool IsTypeCompatible(TypeValue left, TypeValue right) => left switch

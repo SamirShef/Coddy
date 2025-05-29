@@ -1,14 +1,13 @@
-class A { public let a : int = 1; }
+class A { public func a () { println(1); } }
 
 class Test
 {
-	public let a : int = -1;
-	public let b : A = new A();
-
-	 func a : string (message : string) { return message; }
-
+	private let a : A = new A();
+	public func c : string () { return input(); }
+	public func b : A () {
+		return a;
+	}
 }
 
 let a : Test = new Test();
-let b : string = a.a("Hello world!");
-println(b + a.a(" awdaw"));
+a.b().a();
