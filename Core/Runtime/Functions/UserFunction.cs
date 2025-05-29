@@ -12,7 +12,7 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
 
     public IValue Execute(params IValue[] args)
     {
-        if (args.Length != parameters.Count) throw new Exception($"Функция '{name}()' ожидала {parameters.Count} аргумент, а получила {args.Length}.");
+        if (args.Length != parameters.Count) throw new Exception($"Функция '{name}()' ожидала {parameters.Count} аргументов, а получила {args.Length}.");
 
         variableStorage.EnterScope();
         try

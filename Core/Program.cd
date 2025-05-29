@@ -4,9 +4,11 @@ class Test
 {
 	public let a : int = -1;
 	public let b : A = new A();
+
+	 func a : string (message : string) { return message; }
+
 }
 
 let a : Test = new Test();
-println(a.b.a + a.a);
-a.b.a += 9;
-println(a.b.a);
+let b : string = a.a("Hello world!");
+println(b + a.a(" awdaw"));

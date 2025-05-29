@@ -57,9 +57,16 @@ public class Parser (List<Token> tokens)
 
         while (!Match(TokenType.RBrace))
         {
-            /*if (Peek().Type == TokenType.Let) */statements.Add(ParseFieldDeclaration(classInfo));
-
-            /*else throw new Exception("Объявление неизвестного члена класса.");*/
+            if (Peek().Type == TokenType.Private || Peek().Type == TokenType.Public)
+            {
+                if (Peek(1).Type == TokenType.Func) statements.Add(ParseMethodDeclaration(classInfo));
+                else statements.Add(ParseFieldDeclaration(classInfo));
+            }
+            else
+            {
+                if (Peek().Type == TokenType.Func) statements.Add(ParseMethodDeclaration(classInfo));
+                else statements.Add(ParseFieldDeclaration(classInfo));
+            }
         }
 
         return new ClassDeclarationStatement(classStorage, classInfo, statements);
@@ -81,6 +88,43 @@ public class Parser (List<Token> tokens)
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
         return new FieldDeclarationStatement(classInfo, fieldNameToken.Value, type, access, initialExpression);
+    }
+
+    private IStatement ParseMethodDeclaration(ClassInfo classInfo)
+    {
+        AccessModifier access = AccessModifier.Private;
+        if (Match(TokenType.Public)) access = AccessModifier.Public;
+        else if (Match(TokenType.Private)) access = AccessModifier.Private;
+
+        Consume(TokenType.Func, "Отсутствует токен объявления метода 'func'.");
+        Token methodNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+        TypeValue returnType = TypeValue.Void;
+
+        if (Match(TokenType.Colon))
+        {
+            Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления метода.");
+            returnType = GetTypeValueFromToken(typeToken.Type);
+        }
+
+        Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+        var parameters = new List<(string, TypeValue)>();
+
+        while (!Match(TokenType.RParen))
+        {
+            if (parameters.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
+
+            Token paramName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
+            Token paramType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра метода.");
+
+            parameters.Add((paramName.Value, GetTypeValueFromToken(paramType.Type)));
+        }
+
+        IStatement body = ParseStatementOrBlock();
+
+        var method = new UserFunction(methodNameToken.Value, returnType, parameters, body, variableStorage);
+
+        return new MethodDeclarationStatement(classInfo, methodNameToken.Value, method, access);
     }
 
     private IStatement ParseVariableDeclaration(bool fromForStatement = false)
@@ -501,23 +545,24 @@ public class Parser (List<Token> tokens)
         while (Match(TokenType.Dot))
         {
             Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-            expr = new FieldExpression(fieldToken.Value, expr);
+            
+            if (Peek().Type == TokenType.LParen)
+            {
+                Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+
+                expr = new MethodCallExpression(expr, fieldToken.Value, ParseArguments());
+            }
+            else expr = new FieldExpression(fieldToken.Value, expr);
         }
+
         return expr;
     }
 
     private IExpression ParseFunctionCall(string functionName)
     {
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-        List<IExpression> args = [];
 
-        while (!Match(TokenType.RParen))
-        {
-            if (args.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
-            args.Add(ParseExpression());
-        }
-
-        return new FunctionCallExpression(functionStorage, functionName, args);
+        return new FunctionCallExpression(functionStorage, functionName, ParseArguments());
     }
 
     public static bool IsTypeCompatible(TypeValue left, TypeValue right) => left switch
