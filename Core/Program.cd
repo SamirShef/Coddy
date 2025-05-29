@@ -1,7 +1,12 @@
+class A { public let a : int = 1; }
+
 class Test
 {
-	public let a : int;
+	public let a : int = -1;
+	let b : A = new A();
 }
 
 let a : Test = new Test();
-a.a = 1;
+println(a.b.a);
+a.b.a++;
+println(a.b.a);

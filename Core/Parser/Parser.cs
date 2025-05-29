@@ -120,6 +120,13 @@ public class Parser (List<Token> tokens)
     private IStatement ParseAssignment(bool fromForStatement = false)
     {
         string identifierName = Peek(-1).Value;
+
+        if (Peek().Type == TokenType.Dot)
+        {
+            IExpression target = new VariableExpression(variableStorage, identifierName);
+            return ParseFieldAssignmentStatement(target, fromForStatement);
+        }
+
         IExpression expression;
 
         if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
@@ -144,6 +151,25 @@ public class Parser (List<Token> tokens)
         if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
         return new AssignmentStatement(variableStorage, identifierName, expression);
+    }
+
+    private IStatement ParseFieldAssignmentStatement(IExpression target, bool fromForStatement)
+    {
+        while (Match(TokenType.Dot))
+        {
+            Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            target = new FieldExpression(fieldToken.Value, target);
+        }
+
+        if (Match(TokenType.Assign))
+        {
+            IExpression expression = ParseExpression();
+            if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+            if (target is FieldExpression fieldExpr) return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, expression);
+        }
+
+        throw new Exception("Отсутствует токен оператора присвоения.");
     }
 
     private IStatement CreateCompoundAssignment(string varName, Token opToken, IExpression rightExpr)
@@ -387,7 +413,9 @@ public class Parser (List<Token> tokens)
             Token instanceNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов конструктора '('.");
             Consume(TokenType.RParen, "Отсутствует токен завершения перечисления аргументов конструктора ')'.");
-            return new NewClassExpression(classStorage, instanceNameToken.Value);
+            IExpression expression = new NewClassExpression(classStorage, instanceNameToken.Value);
+            expression = ParseFieldChain(expression);
+            return expression;
         }
 
         if (Match(TokenType.LParen))
@@ -420,13 +448,28 @@ public class Parser (List<Token> tokens)
                 return new LiteralExpression(new BoolValue(bool.Parse(token.Value)));
             case TokenType.Identifier:
                 pos++;
+                IExpression expression;
 
-                if (Peek().Type == TokenType.LParen) return ParseFunctionCall(token.Value);
+                if (Peek().Type == TokenType.LParen) expression = ParseFunctionCall(token.Value);
+                else expression = new VariableExpression(variableStorage, token.Value);
+
+                expression = ParseFieldChain(expression);
                 
-                return new VariableExpression(variableStorage, token.Value);
+                return expression;
             default:
                 throw new Exception($"Неожиданный токен: '{token}'.");
         }
+    }
+
+    private IExpression ParseFieldChain(IExpression start)
+    {
+        IExpression expr = start;
+        while (Match(TokenType.Dot))
+        {
+            Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            expr = new FieldExpression(fieldToken.Value, expr);
+        }
+        return expr;
     }
 
     private IExpression ParseFunctionCall(string functionName)
