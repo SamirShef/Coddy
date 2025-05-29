@@ -161,15 +161,49 @@ public class Parser (List<Token> tokens)
             target = new FieldExpression(fieldToken.Value, target);
         }
 
-        if (Match(TokenType.Assign))
+        if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
+        || Match(TokenType.MultiplyAssign) || Match(TokenType.DivideAssign)
+        || Match(TokenType.ModuloAssign) || Match(TokenType.Increment)
+        || Match(TokenType.Decrement))
         {
+            Token opToken = Peek(-1);
+            IExpression rightExpr;
+
+            if (opToken.Type == TokenType.Increment || opToken.Type == TokenType.Decrement) rightExpr = new LiteralExpression(new IntValue(1));
+            else rightExpr = ParseExpression();
+
+            TokenType opType = opToken.Type switch
+            {
+                TokenType.PlusAssign => TokenType.Plus,
+                TokenType.MinusAssign => TokenType.Minus,
+                TokenType.MultiplyAssign => TokenType.Multiply,
+                TokenType.DivideAssign => TokenType.Divide,
+                TokenType.ModuloAssign => TokenType.Modulo,
+                TokenType.Increment => TokenType.Plus,
+                TokenType.Decrement => TokenType.Minus,
+                _ => throw new Exception($"Неподдерживаемый оператор: {opToken.Value}")
+            };
+
+            if (target is not FieldExpression fieldExpr) throw new Exception("Невозможно присвоить новое значение полю: объект не является полем.");
+
+            IExpression currentValue = new FieldExpression(fieldExpr.Name, fieldExpr.TargetExpression);
+            BinaryExpression compoundExpr = new(new Token(opType, opToken.Value), currentValue, rightExpr);
+
+            IExpression assignmentExpr = compoundExpr;
+            if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, assignmentExpr);
+        }
+        else
+        {
+            Consume(TokenType.Assign, "Отсутствует токен оператора присвоения.");
             IExpression expression = ParseExpression();
             if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-            if (target is FieldExpression fieldExpr) return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, expression);
-        }
+            if (target is not FieldExpression fieldExpr) throw new Exception("Невозможно присвоить новое значение полю: объект не является полем.");
 
-        throw new Exception("Отсутствует токен оператора присвоения.");
+            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, expression);
+        }
     }
 
     private IStatement CreateCompoundAssignment(string varName, Token opToken, IExpression rightExpr)

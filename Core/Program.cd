@@ -3,10 +3,10 @@ class A { public let a : int = 1; }
 class Test
 {
 	public let a : int = -1;
-	let b : A = new A();
+	public let b : A = new A();
 }
 
 let a : Test = new Test();
-println(a.b.a);
-a.b.a++;
+println(a.b.a + a.a);
+a.b.a += 9;
 println(a.b.a);
