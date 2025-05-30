@@ -5,7 +5,7 @@ namespace IDE;
 
 public class Interpreter
 {
-    private readonly static string source = File.ReadAllText("H:\\MyProjects\\Coddy\\Core\\Program.cd");
+    private readonly static string source = File.ReadAllText("your\\path\\to\\file");
 
     public static void Execute()
     {
