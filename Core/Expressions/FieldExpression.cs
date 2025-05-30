@@ -10,8 +10,9 @@ public class FieldExpression(string name, IExpression targetExpression) : IExpre
     public IValue Evaluate()
     {
         IValue targetValue = TargetExpression.Evaluate();
-        if (targetValue is not ClassValue cv) throw new Exception($"Невозможно получить значение поля: целевой объект не является классом.");
+        if (targetValue is not ClassValue cv) throw new Exception($"Невозможно получить значение поля: тип {targetValue.Type} не является объектом.");
 
-        return cv.Instance.GetFieldValue(Name);
+        bool isThisContext = TargetExpression is VariableExpression ve && ve.Name == "this";
+        return cv.Instance.GetFieldValue(Name, isThisContext);
     }
 }

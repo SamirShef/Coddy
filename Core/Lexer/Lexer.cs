@@ -29,6 +29,7 @@ public class Lexer (string source)
         { "private", TokenType.Private },
         { "public", TokenType.Public },
         { "new", TokenType.New },
+        { "this", TokenType.This },
     };
 
     public IEnumerable<Token> Tokenize()

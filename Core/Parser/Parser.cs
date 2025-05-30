@@ -30,7 +30,7 @@ public class Parser (List<Token> tokens)
     {
         if (Match(TokenType.Class)) return ParseClassDeclaration();
         if (Match(TokenType.Let)) return ParseVariableDeclaration();
-        if (Match(TokenType.Identifier))
+        if (Match(TokenType.Identifier) || Match(TokenType.This))
         {
             if (Peek().Type == TokenType.Dot)
             {
@@ -127,7 +127,7 @@ public class Parser (List<Token> tokens)
 
         IStatement body = ParseStatementOrBlock();
 
-        var method = new UserFunction(methodNameToken.Value, returnType, parameters, body, variableStorage);
+        var method = new UserFunction(methodNameToken.Value, returnType, parameters, body, variableStorage, classInfo);
 
         return new MethodDeclarationStatement(classInfo, methodNameToken.Value, method, access);
     }
@@ -161,7 +161,10 @@ public class Parser (List<Token> tokens)
         while (!Match(TokenType.RParen))
         {
             if (args.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
-            args.Add(ParseExpression());
+            
+            IExpression expr = ParseExpression();
+            expr = ParseFieldChain(expr);
+            args.Add(expr);
         }
         return args;
     }
@@ -515,6 +518,11 @@ public class Parser (List<Token> tokens)
             IExpression expression = new NewClassExpression(classStorage, instanceNameToken.Value);
             expression = ParseFieldChain(expression);
             return expression;
+        }
+
+        if (Match(TokenType.This))
+        {
+            return new VariableExpression(variableStorage, "this");
         }
 
         if (Match(TokenType.LParen))

@@ -28,7 +28,6 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
 
                 if (!Parser.Parser.IsTypeCompatible(type, argValue.Type)) throw new Exception($"Несовместимый тип аргумента '{name}'.");
 
-
                 variableStorage.Declare(name, type, Parser.Parser.ConvertValue(argValue, type));
             }
 

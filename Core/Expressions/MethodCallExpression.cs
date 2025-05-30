@@ -14,7 +14,8 @@ public class MethodCallExpression(IExpression target, string methodName, List<IE
         
         if (targetValue is not ClassValue cv) throw new Exception($"Невозможно вызывать метод: тип {targetValue.Type} не является объектом.");
 
-        IValue result = cv.Instance.CallMethod(methodName, [.. arguments.Select(arg => arg.Evaluate())]);
+        bool isThisContext = target is VariableExpression ve && ve.Name == "this";
+        IValue result = cv.Instance.CallMethod(methodName, [.. arguments.Select(arg => arg.Evaluate())], isThisContext);
         
         if (result is ClassValue resultClass) return resultClass;
         

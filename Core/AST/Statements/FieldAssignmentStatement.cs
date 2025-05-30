@@ -10,6 +10,7 @@ public class FieldAssignmentStatement(IExpression targetExpression, string name,
         IValue targetValue = targetExpression.Evaluate();
         if (targetValue is not ClassValue cv) throw new Exception($"Невозможно присвоить новое значение полю: целевой объект не является классом.");
 
-        cv.Instance.SetFieldValue(name, expression.Evaluate());
+        bool isThisContext = targetExpression is VariableExpression ve && ve.Name == "this";
+        cv.Instance.SetFieldValue(name, expression.Evaluate(), isThisContext);
     }
 }
