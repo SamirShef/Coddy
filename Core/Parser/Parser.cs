@@ -393,7 +393,23 @@ public class Parser (List<Token> tokens)
         return new BlockStatement(block);
     }
 
-    private IExpression ParseExpression() => ParseLogicalOr();
+    private IExpression ParseExpression() => ParseTernaty();
+
+    private IExpression ParseTernaty()
+    {
+        IExpression condition = ParseLogicalOr();
+
+        if (Match(TokenType.Question))
+        {
+            IExpression trueExpression = ParseExpression();
+            Consume(TokenType.Colon, "Отсутствует разделительный токен между истинным и ложным выражениями конструкции тернарного оператора.");
+            IExpression falseExpression = ParseExpression();
+
+            return new TernaryExpression(condition, trueExpression, falseExpression);
+        }
+
+        return condition;
+    }
 
     private IExpression ParseLogicalOr()
     {

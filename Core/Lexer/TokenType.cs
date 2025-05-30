@@ -20,7 +20,7 @@ public enum TokenType
 
     LBrace, RBrace, LParen, RParen, LBracket, RBracket,
     
-    Semicolon, Comma, Dot, Colon,
+    Semicolon, Comma, Dot, Question, Colon,
     
     EOF
 }

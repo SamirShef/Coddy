@@ -216,6 +216,8 @@ public class Lexer (string source)
                     yield return new Token(TokenType.LBracket, "["); pos++; break;
                 case ']':
                     yield return new Token(TokenType.RBracket, "]"); pos++; break;
+                case '?':
+                    yield return new Token(TokenType.Question, "?"); pos++; break;
                 case ':':
                     yield return new Token(TokenType.Colon, ":"); pos++; break;
                 case ';':
