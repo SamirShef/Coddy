@@ -30,6 +30,7 @@ public class Lexer (string source)
         { "public", TokenType.Public },
         { "new", TokenType.New },
         { "this", TokenType.This },
+        { "constructor", TokenType.Constructor },
     };
 
     public IEnumerable<Token> Tokenize()

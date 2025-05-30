@@ -3,7 +3,28 @@ using Core.Values;
 
 namespace Core.Expressions;
 
-public class NewClassExpression(ClassStorage classStorage, string name) : IExpression
+public class NewClassExpression(ClassStorage classStorage, string name, List<IExpression>? arguments = null) : IExpression
 {
-    public IValue Evaluate() => new ClassValue(new ClassInstance(classStorage.Get(name)));
+    private readonly ClassStorage classStorage = classStorage;
+    private readonly string name = name;
+    private readonly List<IExpression>? arguments = arguments;
+
+    public IValue Evaluate()
+    {
+        var classInfo = classStorage.Get(name);
+        var instance = new ClassInstance(classInfo);
+
+        if (classInfo.Constructor != null)
+        {
+            if (arguments == null) throw new Exception($"Конструктор класса '{name}' ожидает аргументы.");
+            
+            classInfo.Constructor.Execute([.. arguments.Select(arg => arg.Evaluate())]);
+        }
+        else if (arguments != null && arguments.Count > 0)
+        {
+            throw new Exception($"Класс '{name}' не имеет конструктора, но при создании экземпляра переданы аргументы.");
+        }
+
+        return new ClassValue(instance);
+    }
 }

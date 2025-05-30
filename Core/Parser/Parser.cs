@@ -62,7 +62,8 @@ public class Parser (List<Token> tokens)
 
         while (!Match(TokenType.RBrace))
         {
-            if (Peek().Type == TokenType.Private || Peek().Type == TokenType.Public)
+            if (Match(TokenType.Constructor)) statements.Add(ParseConstructorDeclaration(classInfo));
+            else if (Peek().Type == TokenType.Private || Peek().Type == TokenType.Public)
             {
                 if (Peek(1).Type == TokenType.Func) statements.Add(ParseMethodDeclaration(classInfo));
                 else statements.Add(ParseFieldDeclaration(classInfo));
@@ -75,6 +76,29 @@ public class Parser (List<Token> tokens)
         }
 
         return new ClassDeclarationStatement(classStorage, classInfo, statements);
+    }
+
+    private IStatement ParseConstructorDeclaration(ClassInfo classInfo)
+    {
+        Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+        var parameters = new List<(string, TypeValue)>();
+
+        while (!Match(TokenType.RParen))
+        {
+            if (parameters.Count > 0) Consume(TokenType.Comma, "Отсутствует токен перечисления аргументов ','.");
+
+            Token parameterName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+            Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
+            Token parameterType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра конструктора.");
+
+            parameters.Add((parameterName.Value, GetTypeValueFromToken(parameterType.Type)));
+        }
+
+        IStatement body = ParseStatementOrBlock();
+
+        UserFunction constructor = new("constructor", TypeValue.Void, parameters, body, variableStorage, classInfo);
+
+        return new ConstructorDeclarationStatement(classInfo, constructor);
     }
 
     private IStatement ParseFieldDeclaration(ClassInfo classInfo)
@@ -101,11 +125,13 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Public)) access = AccessModifier.Public;
         else if (Match(TokenType.Private)) access = AccessModifier.Private;
 
-        Consume(TokenType.Func, "Отсутствует токен объявления метода 'func'.");
+        bool isConstructor = Match(TokenType.Constructor);
+        if (!isConstructor) Consume(TokenType.Func, "Отсутствует токен объявления метода 'func'.");
+
         Token methodNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         TypeValue returnType = TypeValue.Void;
 
-        if (Match(TokenType.Colon))
+        if (!isConstructor && Match(TokenType.Colon))
         {
             Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления метода.");
             returnType = GetTypeValueFromToken(typeToken.Type);
@@ -129,6 +155,12 @@ public class Parser (List<Token> tokens)
 
         var method = new UserFunction(methodNameToken.Value, returnType, parameters, body, variableStorage, classInfo);
 
+        if (isConstructor)
+        {
+            classInfo.SetConstructor(method);
+            return new MethodDeclarationStatement(classInfo, methodNameToken.Value, method, access);
+        }
+
         return new MethodDeclarationStatement(classInfo, methodNameToken.Value, method, access);
     }
 
@@ -141,7 +173,7 @@ public class Parser (List<Token> tokens)
         TypeValue baseType = GetTypeValueFromToken(baseTypeToken.Type);
         IExpression? expression = null;
         if (Match(TokenType.Assign)) expression = ParseExpression();
-
+        if (expression != null) expression = ParseFieldChain(expression);
         if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
         return new VariableDeclarationStatement(variableStorage, classStorage, identifierName, baseTypeToken.Value, baseType, expression);
@@ -514,8 +546,10 @@ public class Parser (List<Token> tokens)
         {
             Token instanceNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов конструктора '('.");
-            Consume(TokenType.RParen, "Отсутствует токен завершения перечисления аргументов конструктора ')'.");
-            IExpression expression = new NewClassExpression(classStorage, instanceNameToken.Value);
+            
+            List<IExpression> args = ParseArguments();
+
+            IExpression expression = new NewClassExpression(classStorage, instanceNameToken.Value, args);
             expression = ParseFieldChain(expression);
             return expression;
         }

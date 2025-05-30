@@ -8,6 +8,7 @@ public class ClassInfo(string name)
     public string Name { get; } = name;
     public Dictionary<string, FieldInfo> Fields { get; } = [];
     public Dictionary<string, MethodInfo> Methods { get; } = [];
+    public UserFunction? Constructor { get; private set; }
 
     public void AddField(string name, FieldInfo field)
     {
@@ -21,6 +22,13 @@ public class ClassInfo(string name)
         if (Methods.ContainsKey(name)) throw new Exception($"Объявление невозможно: метод с именем '{name}' уже существует.");
 
         Methods.Add(name, method);
+    }
+
+    public void SetConstructor(UserFunction constructor)
+    {
+        if (Constructor != null) throw new Exception($"Объявление невозможно: конструктор уже существует.");
+
+        Constructor = constructor;
     }
 }
 

@@ -1,8 +1,15 @@
 class A
 {
 	private let a : string = "123";
-	public func a(message : string) { println(this.a); }
+
+	constructor(message : string) {
+		this.a = message;
+	}
+
+	public func a() {
+		println(this.a);
+	}
 }
 
-let a : A = new A();
-a.a("Hello");
+let a : A = new A("Hello world!");
+a.a();

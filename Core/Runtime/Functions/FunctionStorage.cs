@@ -12,14 +12,14 @@ public class FunctionStorage
 
     public void Declare(string name, IFunction function)
     {
-        if (functions.ContainsKey(name)) throw new Exception($"Объявление невозможно: функция '{name}' уже объявлен в текущем контексте.");
+        if (functions.ContainsKey(name)) throw new Exception($"Объявление невозможно: функция/метод '{name}' уже объявлен в текущем контексте.");
 
         functions.Add(name, function);
     }
 
     public IFunction Get(string name)
     {
-        if (!functions.ContainsKey(name)) throw new Exception($"Не удается вызвать функцию с именем '{name}'. Функция не объявлена.");
+        if (!functions.ContainsKey(name)) throw new Exception($"Не удается вызвать функцию/метод с именем '{name}'. Функция/метод не объявлен.");
 
         return functions[name];
     }
