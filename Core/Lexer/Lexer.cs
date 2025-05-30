@@ -26,6 +26,9 @@ public class Lexer (string source)
         { "break", TokenType.Break },
         { "continue", TokenType.Continue },
         { "return", TokenType.Return },
+        { "private", TokenType.Private },
+        { "public", TokenType.Public },
+        { "new", TokenType.New },
     };
 
     public IEnumerable<Token> Tokenize()
