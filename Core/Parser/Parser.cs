@@ -551,12 +551,7 @@ public class Parser (List<Token> tokens)
         {
             Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             
-            if (Peek().Type == TokenType.LParen)
-            {
-                Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-
-                expr = new MethodCallExpression(expr, fieldToken.Value, ParseArguments());
-            }
+            if (Match(TokenType.LParen)) expr = new MethodCallExpression(expr, fieldToken.Value, ParseArguments());
             else expr = new FieldExpression(fieldToken.Value, expr);
         }
 
@@ -576,16 +571,15 @@ public class Parser (List<Token> tokens)
         {
             Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             
-            if (Peek().Type == TokenType.LParen)
+            if (Match(TokenType.LParen))
             {
-                Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
                 List<IExpression> args = ParseArguments();
-                Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
-                return new MethodCallStatement(new MethodCallExpression(target, fieldToken.Value, args));
+                target = new MethodCallExpression(target, fieldToken.Value, args);
             }
-            
-            target = new FieldExpression(fieldToken.Value, target);
+            else target = new FieldExpression(fieldToken.Value, target);
         }
+
+        if (Match(TokenType.Semicolon)) return new MethodCallStatement(target);
 
         return ParseFieldAssignmentStatement(target, false);
     }

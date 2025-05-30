@@ -12,11 +12,14 @@ public class MethodCallExpression(IExpression target, string methodName, List<IE
     {
         IValue targetValue = target.Evaluate();
         
-        if (targetValue is not ClassValue cv)
-        {
-            throw new Exception($"Попытка вызвать метод {methodName} на не-объекте типа {targetValue.Type}");
-        }
+        if (targetValue is not ClassValue cv) throw new Exception($"Невозможно вызывать метод: тип {targetValue.Type} не является объектом.");
 
-        return cv.Instance.CallMethod(methodName, [.. arguments.Select(arg => arg.Evaluate())]);
+        IValue result = cv.Instance.CallMethod(methodName, [.. arguments.Select(arg => arg.Evaluate())]);
+        
+        if (result is ClassValue resultClass) return resultClass;
+        
+        if (result is VoidValue) return targetValue;
+
+        return result;
     }
-} 
+}
