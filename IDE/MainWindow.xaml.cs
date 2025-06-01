@@ -26,7 +26,7 @@ namespace IDE
             InitializeComponent();
             AllocConsole();
 
-            Interpreter.Execute();
+            Compiler.Execute(File.ReadAllText("H:\\MyProjects\\Coddy\\Core\\Program.cd"));
         }
     }
 }

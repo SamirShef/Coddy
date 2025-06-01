@@ -8,6 +8,10 @@ public class MethodCallExpression(IExpression target, string methodName, List<IE
     private readonly string methodName = methodName;
     private readonly List<IExpression> arguments = arguments;
 
+    public IExpression Target { get; } = target;
+    public string MethodName { get; } = methodName;
+    public List<IExpression> Args { get; } = arguments;
+
     public IValue Evaluate()
     {
         IValue targetValue = target.Evaluate();

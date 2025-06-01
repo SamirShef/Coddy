@@ -10,5 +10,9 @@ public class MethodDeclarationStatement(ClassInfo classInfo, string methodName, 
     private readonly UserFunction method = method;
     private readonly AccessModifier access = access;
 
+    public string MethodName { get; } = methodName;
+    public UserFunction Method { get; } = method;
+    public AccessModifier Access { get; } = access;
+
     public void Execute() => classInfo.AddMethod(methodName, new MethodInfo(access, method));
 } 

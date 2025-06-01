@@ -9,6 +9,10 @@ public class IfElseStatement(IExpression condition, IStatement ifBlock, IStateme
     private readonly IStatement ifBlock = ifBlock;
     private readonly IStatement? elseBlock = elseBlock;
 
+    public IExpression Condition { get; } = condition;
+    public IStatement IfBlock { get; } = ifBlock;
+    public IStatement? ElseBlock { get; } = elseBlock;
+
     public void Execute()
     {
         IValue conditionVal = condition.Evaluate();

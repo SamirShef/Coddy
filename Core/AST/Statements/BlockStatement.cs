@@ -2,10 +2,10 @@
 
 public class BlockStatement(List<IStatement> statements) : IStatement
 {
-    private List<IStatement> statements = statements;
+    public List<IStatement> Statements { get; } = statements;
 
     public void Execute()
     {
-        foreach (IStatement statement in statements) statement.Execute();
+        foreach (IStatement statement in Statements) statement.Execute();
     }
 }

@@ -10,6 +10,9 @@ public class DoWhileLoopStatement(VariableStorage variableStorage, IExpression c
     private readonly IExpression condition = condition;
     private readonly IStatement block = block;
 
+    public IExpression Condition { get; } = condition;
+    public IStatement Block { get; } = block;
+
     public void Execute()
     {
         IValue conditionVal = condition.Evaluate();

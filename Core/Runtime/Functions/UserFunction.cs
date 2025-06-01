@@ -4,13 +4,17 @@ using Core.Values;
 
 namespace Core.Runtime.Functions;
 
-public class UserFunction(string name, TypeValue returnType, List<(string, TypeValue)> parameters, IStatement body, VariableStorage variableStorage, ClassInfo? classInfo = null) : IFunction
+public class UserFunction(string name, string returnTypeValue, TypeValue returnType, List<(string, string, TypeValue)> parameters, IStatement body, VariableStorage variableStorage, ClassInfo? classInfo = null) : IFunction
 {
-    public TypeValue ReturnType { get; } = returnType;
-    private readonly List<(string, TypeValue)> parameters = parameters;
+    private readonly List<(string, string, TypeValue)> parameters = parameters;
     private readonly IStatement body = body;
     private readonly VariableStorage variableStorage = variableStorage;
     private readonly ClassInfo? classInfo = classInfo;
+
+    public string ReturnTypeValue { get; } = returnTypeValue;
+    public TypeValue ReturnType { get; } = returnType;
+    public List<(string, string, TypeValue)> Parameters { get; } = parameters;
+    public IStatement Body { get; } = body;
 
     public IValue Execute(params IValue[] args)
     {
@@ -23,7 +27,7 @@ public class UserFunction(string name, TypeValue returnType, List<(string, TypeV
 
             for (int i = 0; i < parameters.Count; i++)
             {
-                var (name, type) = parameters[i];
+                var (name, typeValue, type) = parameters[i];
                 var argValue = args[i];
 
                 if (!Parser.Parser.IsTypeCompatible(type, argValue.Type)) throw new Exception($"Несовместимый тип аргумента '{name}'.");

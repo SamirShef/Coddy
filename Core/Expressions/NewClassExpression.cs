@@ -9,6 +9,9 @@ public class NewClassExpression(ClassStorage classStorage, string name, List<IEx
     private readonly string name = name;
     private readonly List<IExpression>? arguments = arguments;
 
+    public string Name { get; } = name;
+    public List<IExpression>? Args { get; } = arguments;
+
     public IValue Evaluate()
     {
         var classInfo = classStorage.Get(name);

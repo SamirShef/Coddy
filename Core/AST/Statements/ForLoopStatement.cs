@@ -12,6 +12,11 @@ public class ForLoopStatement(VariableStorage variableStorage, IStatement indexa
     private readonly IStatement iterator = iterator;
     private readonly IStatement block = block;
 
+    public IStatement IndexatorDeclaration { get; } = indexatorDeclaration;
+    public IExpression Condition { get; } = condition;
+    public IStatement Iterator { get; } = iterator;
+    public IStatement Block { get; } = block;
+
     public void Execute()
     {
         indexatorDeclaration.Execute();

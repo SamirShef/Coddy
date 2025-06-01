@@ -9,6 +9,10 @@ public class BinaryExpression(Token op, IExpression left, IExpression right) : I
     private readonly IExpression left = left;
     private readonly IExpression right = right;
 
+    public Token Op { get; } = op;
+    public IExpression Left { get; } = left;
+    public IExpression Right { get; } = right;
+
     public IValue Evaluate()
     {
         IValue leftVal = left.Evaluate();

@@ -13,9 +13,14 @@ public class VariableDeclarationStatement(VariableStorage variableStorage, Class
     private readonly TypeValue type = type;
     private readonly IExpression? expression = expression;
 
+    public string Name { get; } = name;
+    public string TypeValue { get; } = typeValue;
+    public TypeValue Type { get; } = type;
+    public IExpression? Expression { get; } = expression;
+
     public void Execute()
     {
-        if (type == TypeValue.Class && !classStorage.Exist(typeValue)) throw new Exception($"Объявление невозможно: класс с именем '{typeValue}' не существует.");
+        if (type == Values.TypeValue.Class && !classStorage.Exist(typeValue)) throw new Exception($"Объявление невозможно: класс с именем '{typeValue}' не существует.");
         IValue? value = expression?.Evaluate();
         if (value != null)
         {

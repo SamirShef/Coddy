@@ -5,13 +5,19 @@ using Core.Values;
 
 namespace Core.AST.Statements;
 
-public class FieldDeclarationStatement(ClassInfo classInfo, string name, TypeValue type, AccessModifier access, IExpression? expression) : IStatement
+public class FieldDeclarationStatement(ClassInfo classInfo, string name, string typeValue, TypeValue type, AccessModifier access, IExpression? expression) : IStatement
 {
     private readonly ClassInfo classInfo = classInfo;
     private readonly string name = name;
     private readonly TypeValue type = type;
     private readonly AccessModifier access = access;
     private readonly IExpression? expression = expression;
+
+    public string Name { get; } = name;
+    public string TypeValue { get; } = typeValue;
+    public TypeValue Type { get; } = type;
+    public AccessModifier Access { get; } = access;
+    public IExpression? Expression { get; } = expression;
 
     public void Execute()
     {

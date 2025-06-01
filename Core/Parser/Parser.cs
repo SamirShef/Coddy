@@ -5,6 +5,7 @@ using Core.Runtime;
 using Core.Values;
 using Core.Lexer;
 using Core.Runtime.OOP;
+using System.Collections.Generic;
 
 namespace Core.Parser;
 
@@ -81,7 +82,7 @@ public class Parser (List<Token> tokens)
     private IStatement ParseConstructorDeclaration(ClassInfo classInfo)
     {
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-        var parameters = new List<(string, TypeValue)>();
+        var parameters = new List<(string, string, TypeValue)>();
 
         while (!Match(TokenType.RParen))
         {
@@ -91,12 +92,12 @@ public class Parser (List<Token> tokens)
             Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
             Token parameterType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра конструктора.");
 
-            parameters.Add((parameterName.Value, GetTypeValueFromToken(parameterType.Type)));
+            parameters.Add((parameterName.Value, parameterType.Value, GetTypeValueFromToken(parameterType.Type)));
         }
 
         IStatement body = ParseStatementOrBlock();
 
-        UserFunction constructor = new("constructor", TypeValue.Void, parameters, body, variableStorage, classInfo);
+        UserFunction constructor = new("constructor", "void", TypeValue.Void, parameters, body, variableStorage, classInfo);
 
         return new ConstructorDeclarationStatement(classInfo, constructor);
     }
@@ -110,13 +111,14 @@ public class Parser (List<Token> tokens)
         Consume(TokenType.Let, "Отсутствует токен объявления поля 'let'.");
         Token fieldNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
-        TypeValue type = GetTypeValueFromToken(Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления поля.").Type);
+        Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления поля.");
+        TypeValue type = GetTypeValueFromToken(typeToken.Type);
 
         IExpression? initialExpression = null;
         if (Match(TokenType.Assign)) initialExpression = ParseExpression();
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new FieldDeclarationStatement(classInfo, fieldNameToken.Value, type, access, initialExpression);
+        return new FieldDeclarationStatement(classInfo, fieldNameToken.Value, typeToken.Value, type, access, initialExpression);
     }
 
     private IStatement ParseMethodDeclaration(ClassInfo classInfo)
@@ -131,14 +133,15 @@ public class Parser (List<Token> tokens)
         Token methodNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         TypeValue returnType = TypeValue.Void;
 
+        Token? typeToken = null;
         if (!isConstructor && Match(TokenType.Colon))
         {
-            Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления метода.");
+            typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления метода.");
             returnType = GetTypeValueFromToken(typeToken.Type);
         }
 
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-        var parameters = new List<(string, TypeValue)>();
+        var parameters = new List<(string, string, TypeValue)>();
 
         while (!Match(TokenType.RParen))
         {
@@ -148,12 +151,12 @@ public class Parser (List<Token> tokens)
             Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
             Token paramType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра метода.");
 
-            parameters.Add((paramName.Value, GetTypeValueFromToken(paramType.Type)));
+            parameters.Add((paramName.Value, paramType.Value, GetTypeValueFromToken(paramType.Type)));
         }
 
         IStatement body = ParseStatementOrBlock();
 
-        var method = new UserFunction(methodNameToken.Value, returnType, parameters, body, variableStorage, classInfo);
+        var method = new UserFunction(methodNameToken.Value, typeToken?.Value ?? "", returnType, parameters, body, variableStorage, classInfo);
 
         if (isConstructor)
         {
@@ -276,7 +279,7 @@ public class Parser (List<Token> tokens)
             IExpression assignmentExpr = compoundExpr;
             if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, assignmentExpr);
+            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, opToken, assignmentExpr);
         }
         else
         {
@@ -286,7 +289,7 @@ public class Parser (List<Token> tokens)
 
             if (target is not FieldExpression fieldExpr) throw new Exception("Невозможно присвоить новое значение полю: объект не является полем.");
 
-            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, expression);
+            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, new Token(TokenType.Assign, "="), expression);
         }
     }
 
@@ -313,15 +316,16 @@ public class Parser (List<Token> tokens)
     {
         Token nameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         TypeValue returnType = TypeValue.Void;
+        Token? typeToken = null;
 
         if (Match(TokenType.Colon))
         {
-            Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления функции.");
+            typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления функции.");
             returnType = GetTypeValueFromToken(typeToken.Type);
         }
 
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-        var parameters = new List<(string, TypeValue)>();
+        var parameters = new List<(string, string, TypeValue)>();
 
         while (!Match(TokenType.RParen))
         {
@@ -331,12 +335,12 @@ public class Parser (List<Token> tokens)
             Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
             Token paramType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра функции.");
 
-            parameters.Add((paramName.Value, GetTypeValueFromToken(paramType.Type)));
+            parameters.Add((paramName.Value, paramType.Value, GetTypeValueFromToken(paramType.Type)));
         }
 
         IStatement body = ParseStatementOrBlock();
 
-        var function = new UserFunction(nameToken.Value, returnType, parameters, body, variableStorage);
+        var function = new UserFunction(nameToken.Value, typeToken?.Value ?? "", returnType, parameters, body, variableStorage);
 
         return new FunctionDeclarationStatement(functionStorage, nameToken.Value, function);
     }
@@ -411,6 +415,7 @@ public class Parser (List<Token> tokens)
     {
         IExpression? expr = null;
         if (Peek().Type != TokenType.Semicolon) expr = ParseExpression();
+        if (expr != null) expr = ParseFieldChain(expr);
 
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
         return new ReturnStatement(expr);
@@ -627,14 +632,13 @@ public class Parser (List<Token> tokens)
     {
         while (Match(TokenType.Dot))
         {
-            Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-            
+            Token fieldNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             if (Match(TokenType.LParen))
             {
                 List<IExpression> args = ParseArguments();
-                target = new MethodCallExpression(target, fieldToken.Value, args);
+                target = new MethodCallExpression(target, fieldNameToken.Value, args);
             }
-            else target = new FieldExpression(fieldToken.Value, target);
+            else target = new FieldExpression(fieldNameToken.Value, target);
         }
 
         if (Match(TokenType.Semicolon)) return new MethodCallStatement(target);

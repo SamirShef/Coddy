@@ -1,15 +1,3 @@
-class A
-{
-	private let a : string = "123";
-
-	constructor(message : string) {
-		this.a = message;
-	}
-
-	public func a() {
-		println(this.a);
-	}
+for (i : int : i < 10 : i++) {
+	println(i);
 }
-
-let a : A = new A("Hello world!");
-a.a();

@@ -1,0 +1,316 @@
+﻿using Core.AST.Statements;
+using Core.Expressions;
+using Core.Runtime;
+using Core.Values;
+using System.Text;
+
+namespace Core.Translator;
+
+/// <summary>
+/// Class to translate Coddy code to C# code
+/// </summary>
+public class Translator()
+{
+    public static string Translate(List<IStatement> statements)
+    {
+        List<IStatement> statementsInMain = [];
+        List<IStatement> statementsInGlobalClass = [];
+
+        foreach (IStatement statement in statements)
+        {
+            if (CodePartInGlobal(statement)) statementsInGlobalClass.Add(statement);
+            else statementsInMain.Add(statement);
+        }
+
+        StringBuilder builder = new();
+
+        builder.AppendLine("using System;");
+        builder.AppendLine();
+        builder.AppendLine("public class Program {");
+        builder.AppendLine("public static void __Main__() {");
+        foreach (IStatement statement in statementsInMain) builder.AppendLine($"{TranslateCodePart(statement)}");
+        builder.AppendLine("}");
+        foreach (IStatement statement in statementsInGlobalClass) builder.AppendLine($"{TranslateCodePart(statement)}");
+        builder.AppendLine("}");
+        
+        return builder.ToString();
+    }
+
+    private static bool CodePartInGlobal(IStatement statement) => statement switch
+    {
+        ClassDeclarationStatement or FunctionDeclarationStatement => true,
+        _ => false
+    };
+
+    private static string TranslateCodePart(IStatement statement) => statement switch
+    {
+        ClassDeclarationStatement cds => TranslateClassDeclarationStatement(cds),
+        FieldDeclarationStatement fds => TranslateFieldDeclarationStatement(fds),
+        FieldAssignmentStatement fas => TranslateFieldAssignmentStatement(fas),
+        MethodDeclarationStatement mds => TranslateMethodDeclarationStatement(mds),
+        MethodCallStatement mcs => TranslateMethodCallStatement(mcs),
+        ConstructorDeclarationStatement cds => TranslateConstructorDeclarationStatement(cds),
+        VariableDeclarationStatement vsd => TranslateVariableDeclarationStatement(vsd),
+        AssignmentStatement ags => TranslateAssignmentStatement(ags),
+        IfElseStatement ies => TranslateIfElseStatement(ies),
+        WhileLoopStatement wls => TranslateWhileStatement(wls),
+        DoWhileLoopStatement dwls => TranslateDoWhileStatement(dwls),
+        ForLoopStatement fls => TranslateForStatement(fls),
+        FunctionDeclarationStatement fds => TranslateFunctionDeclarationStatement(fds),
+        FunctionCallStatement fcs => TranslateFunctionCallStatement(fcs),
+        ReturnStatement rs => TranslateReturnStatement(rs),
+        BreakStatement => "break;",
+        ContinueStatement => "continue;",
+        _ => throw new Exception($"Невозможно обработать данный тип команды ({statement}).")
+    };
+
+    private static string TranslateClassDeclarationStatement(ClassDeclarationStatement cds)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine($"public class {cds.ClassInfo.Name} " + '{');
+        foreach (IStatement statement in cds.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateFieldDeclarationStatement(FieldDeclarationStatement fds)
+    {
+        StringBuilder builder = new();
+        TypeValue type = fds.Type;
+        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : fds.TypeValue;
+        builder.Append($"{fds.Access.ToString().ToLower()} {typeString} {fds.Name}");
+        if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
+        builder.Append(';');
+
+        return builder.ToString();
+    }
+
+    private static string TranslateFieldAssignmentStatement(FieldAssignmentStatement fas) => $"{TranslateExpression(fas.TargetExpression)}.{fas.Name} {fas.OpToken.Value} {TranslateExpression(fas.Expression)};";
+
+    private static string TranslateMethodDeclarationStatement(MethodDeclarationStatement mds)
+    {
+        StringBuilder builder = new();
+        string[] parameters = new string[mds.Method.Parameters.Count];
+        for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(mds.Method.Parameters[i]);
+        builder.AppendLine($"{mds.Access.ToString().ToLower()} {mds.Method.ReturnType.ToString().ToLower()} {mds.MethodName}({string.Join(", ", parameters)}) " + '{');
+        IStatement body = mds.Method.Body;
+        if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
+        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateMethodCallStatement(MethodCallStatement mcs) => TranslateExpression(mcs.Expression);
+
+    private static string TranslateConstructorDeclarationStatement(ConstructorDeclarationStatement cds)
+    {
+        StringBuilder builder = new();
+        string[] parameters = new string[cds.Constructor.Parameters.Count];
+        for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(cds.Constructor.Parameters[i]);
+        builder.AppendLine($"public {cds.ClassInfo.Name}({string.Join(", ", parameters)}) " + '{');
+        IStatement body = cds.Constructor.Body;
+        if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
+        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateVariableDeclarationStatement(VariableDeclarationStatement vds)
+    {
+        StringBuilder builder = new();
+        
+        TypeValue type = vds.Type;
+        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : vds.TypeValue;
+        
+        builder.Append($"{typeString} {vds.Name} = ");
+        if (vds.Expression != null) builder.Append($"{TranslateExpression(vds.Expression)}");
+        else builder.Append(GetDefaultValueByTypeValue(type));
+        builder.Append(';');
+        
+        return builder.ToString();
+    }
+
+    private static string TranslateAssignmentStatement(AssignmentStatement ags) => $"{ags.Name} = {TranslateExpression(ags.NewExpression)};";
+
+    private static string TranslateIfElseStatement(IfElseStatement ies)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine($"if ({TranslateExpression(ies.Condition)}) " + '{');
+        IStatement ifBlock = ies.IfBlock;
+        if (ifBlock is not BlockStatement ifBs) builder.AppendLine(TranslateCodePart(ifBlock));
+        else foreach (IStatement statement in ifBs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine("}");
+
+        IStatement? elseBlock = ies.ElseBlock;
+        if (elseBlock != null)
+        {
+            builder.AppendLine("else {");
+            if (elseBlock is not BlockStatement elseBs) builder.AppendLine(TranslateCodePart(elseBlock));
+            else foreach (IStatement statement in elseBs.Statements) builder.AppendLine(TranslateCodePart(statement));
+            builder.AppendLine("}");
+        }
+
+        return builder.ToString();
+    }
+
+    private static string TranslateWhileStatement(WhileLoopStatement wls)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine($"while ({TranslateExpression(wls.Condition)}) " + '{');
+        IStatement block = wls.Block;
+        if (block is not BlockStatement bs) builder.Append(TranslateCodePart(block));
+        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateDoWhileStatement(DoWhileLoopStatement dwls)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine("do {");
+        IStatement block = dwls.Block;
+        if (block is not BlockStatement bs) builder.Append(TranslateCodePart(block));
+        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine('}' + $" while ({TranslateExpression(dwls.Condition)});");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateForStatement(ForLoopStatement fls)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine($"for ({TranslateCodePart(fls.IndexatorDeclaration)} {TranslateExpression(fls.Condition)}; {TranslateCodePart(fls.Iterator).TrimEnd(';')}) " + '{');
+        IStatement block = fls.Block;
+        if (block is not BlockStatement bs) builder.Append(TranslateCodePart(block));
+        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateFunctionDeclarationStatement(FunctionDeclarationStatement fds)
+    {
+        StringBuilder builder = new();
+        
+        string[] parameters = new string[fds.UserFunction.Parameters.Count];
+        for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(fds.UserFunction.Parameters[i]);
+        
+        TypeValue type = fds.UserFunction.ReturnType;
+        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : fds.UserFunction.ReturnTypeValue;
+
+        builder.AppendLine($"public static {typeString} {fds.Name} ({string.Join(", ", parameters)}) " + '{');
+        
+        IStatement body = fds.UserFunction.Body;
+        if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
+        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+        
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateFunctionParameter((string, string, TypeValue) parameter)
+    {
+        TypeValue type = parameter.Item3;
+        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : parameter.Item2;
+
+        return $"{typeString} {parameter.Item1}";
+    }
+
+    private static string TranslateFunctionCallStatement(FunctionCallStatement fcs)
+    {
+        string[] args = new string[fcs.Args.Count];
+        for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(fcs.Args[i]);
+
+        return fcs.Name switch
+        {
+            "println" => $"Console.WriteLine({string.Join(", ", args)});",
+            "input" => $"Console.ReadLine({string.Join(", ", args)});",
+            _ => $"{fcs.Name}({string.Join(", ", args)});"
+        };
+    }
+
+    private static string TranslateReturnStatement(ReturnStatement rs)
+    {
+        if (rs.Expression != null) return $"return {TranslateExpression(rs.Expression)};";
+        return "return;";
+    }
+
+    private static string TranslateExpression(IExpression expression) => expression switch
+    {
+        LiteralExpression le => TranslateLiteralExpression(le),
+        VariableExpression ve => ve.Name,
+        UnaryExpression ue => TranslateUnaryExpression(ue),
+        BinaryExpression be => TranslateBinaryExpression(be),
+        TernaryExpression te => TranslateTernaryExpression(te),
+        FunctionCallExpression fce => TranslateFunctionCallExpression(fce),
+        NewClassExpression nce => TranslateNewClassExpression(nce),
+        FieldExpression fe => TranslateFieldExpression(fe),
+        MethodCallExpression mce => TranslateMethodCallExpression(mce),
+        _ => throw new Exception($"Невозможно обработать данный тип выражения ({expression}).")
+    };
+
+    private static string TranslateLiteralExpression(LiteralExpression le)
+    {
+        string translatedExpression = le.Value.AsString();
+
+        if (le.Value is StringValue) return $"\"{translatedExpression}\"";
+        if (le.Value is BoolValue) return translatedExpression.ToLower();
+
+        return translatedExpression;
+    }
+
+    private static string TranslateUnaryExpression(UnaryExpression ue) => $"{ue.Op.Value}{TranslateExpression(ue.Expression)}";
+
+    private static string TranslateBinaryExpression(BinaryExpression be) => $"{TranslateExpression(be.Left)} {be.Op.Value} {TranslateExpression(be.Right)}";
+
+    private static string TranslateTernaryExpression(TernaryExpression te) => $"{TranslateExpression(te.ConditionExpression)} ? {TranslateExpression(te.TrueExpression)} : {TranslateExpression(te.FalseExpression)}";
+
+    private static string TranslateFunctionCallExpression(FunctionCallExpression fce)
+    {
+        string[] args = new string[fce.Args.Count];
+        for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(fce.Args[i]);
+
+        return fce.Name switch
+        {
+            "println" => $"RuntimeHelper.Println({string.Join(", ", args)})",
+            "input" => $"RuntimeHelper.Input({string.Join(", ", args)})",
+            _ => $"{fce.Name}({string.Join(", ", args)})"
+        };
+    }
+
+    private static string TranslateNewClassExpression(NewClassExpression nce)
+    {
+        List<string> args = [];
+        if (nce.Args != null) for (int i = 0; i < nce.Args.Count; i++) args.Add(TranslateExpression(nce.Args[i]));
+
+        return $"new {nce.Name}({string.Join(", ", args)})";
+    }
+
+    private static string TranslateFieldExpression(FieldExpression fe) => $"{TranslateExpression(fe.TargetExpression)}.{fe.Name}";
+
+    private static string TranslateMethodCallExpression(MethodCallExpression mce)
+    {
+        string[] args = new string[mce.Args.Count];
+        for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(mce.Args[i]);
+        return $"{TranslateExpression(mce.Target)}.{mce.MethodName}({string.Join(", ", args)});";
+    }
+
+    private static string GetDefaultValueByTypeValue(TypeValue type)
+    {
+        return type switch
+        {
+            TypeValue.Int => "0",
+            TypeValue.Float => "0f",
+            TypeValue.Double => "0d",
+            TypeValue.Decimal => "0m",
+            TypeValue.String => "\"\"",
+            TypeValue.Bool => "false",
+            _ => throw new Exception($"Невозможно указать стандартное значение типу {type}")
+        };
+    }
+}

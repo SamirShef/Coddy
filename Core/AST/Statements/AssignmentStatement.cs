@@ -10,6 +10,9 @@ public class AssignmentStatement(VariableStorage variableStorage, string name, I
     private readonly string name = name;
     private readonly IExpression newExpression = newExpression;
 
+    public string Name { get; } = name;
+    public IExpression NewExpression { get; } = newExpression;
+
     public void Execute()
     {
         if (!variableStorage.Exist(name)) throw new Exception($"Присваивание невозможно: переменная с именем '{name}' не существует в текущем контексте.");
