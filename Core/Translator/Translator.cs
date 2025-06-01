@@ -25,6 +25,7 @@ public class Translator()
         StringBuilder builder = new();
 
         builder.AppendLine("using System;");
+        builder.AppendLine("using IDE.Runtime;");
         builder.AppendLine();
         builder.AppendLine("public class Program {");
         builder.AppendLine("public static void __Main__() {");
@@ -228,8 +229,14 @@ public class Translator()
 
         return fcs.Name switch
         {
-            "println" => $"Console.WriteLine({string.Join(", ", args)});",
-            "input" => $"Console.ReadLine({string.Join(", ", args)});",
+            "println" => $"RuntimeHelper.Println({string.Join(", ", args)});",
+            "input" => $"RuntimeHelper.Input({string.Join(", ", args)});",
+            "to_int" => $"RuntimeHelper.ToInt({string.Join(", ", args)});",
+            "to_float" => $"RuntimeHelper.ToFloat({string.Join(", ", args)});",
+            "to_double" => $"RuntimeHelper.ToDouble({string.Join(", ", args)});",
+            "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)});",
+            "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)});",
+            "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)});",
             _ => $"{fcs.Name}({string.Join(", ", args)});"
         };
     }
@@ -279,6 +286,12 @@ public class Translator()
         {
             "println" => $"RuntimeHelper.Println({string.Join(", ", args)})",
             "input" => $"RuntimeHelper.Input({string.Join(", ", args)})",
+            "to_int" => $"RuntimeHelper.ToInt({string.Join(", ", args)})",
+            "to_float" => $"RuntimeHelper.ToFloat({string.Join(", ", args)})",
+            "to_double" => $"RuntimeHelper.ToDouble({string.Join(", ", args)})",
+            "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)})",
+            "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)})",
+            "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)})",
             _ => $"{fce.Name}({string.Join(", ", args)})"
         };
     }

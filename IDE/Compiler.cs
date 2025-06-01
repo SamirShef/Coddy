@@ -17,11 +17,11 @@ public class Compiler
 
         //foreach (IStatement statement in statements) statement.Execute();
         
-        Console.WriteLine("Translating to C#...");
+        Console.WriteLine("Трансляция в C#...");
         string translatedCode = Translator.Translate(statements);
 
         File.WriteAllText($"{Directory.GetCurrentDirectory()}\\Generated\\Program.cs", translatedCode);
-        Console.WriteLine("Translating ended, executing...");
+        Console.WriteLine("Трансляция завершена. Выполнение...");
 
         CodeRunner.RunGeneratedCode(translatedCode);
     }
