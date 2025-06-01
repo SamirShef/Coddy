@@ -1,2 +1,1 @@
-
-func __Main__ (a : int, b : int) { println(2 + 2 * 2); }
+println("Hello, user! This is example script for Coddy.");
