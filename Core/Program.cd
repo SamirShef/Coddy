@@ -1,3 +1,2 @@
-for (i : int : i < 10 : i++) {
-	println(i);
-}
+
+func __Main__ (a : int, b : int) { println(2 + 2 * 2); }

@@ -43,7 +43,7 @@ public class Lexer (string source)
                 continue;
             }
 
-            if (char.IsLetter(source[pos]))
+            if (char.IsLetter(source[pos]) || source[pos] == '_')
             {
                 yield return ReadIdentifierOrKeyword();
                 continue;
@@ -239,7 +239,7 @@ public class Lexer (string source)
     {
         StringBuilder builder = new();
 
-        while (char.IsLetterOrDigit(source[pos])) builder.Append(source[pos++]);
+        while (char.IsLetterOrDigit(source[pos]) || source[pos] == '_') builder.Append(source[pos++]);
 
         if (keywords.TryGetValue(builder.ToString(), out TokenType type)) return new Token(type, builder.ToString());
 
