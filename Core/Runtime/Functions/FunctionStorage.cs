@@ -14,6 +14,7 @@ public class FunctionStorage
         { "to_decimal", new ToDecimalFunction() },
         { "to_string", new ToStringFunction() },
         { "to_boolean", new ToBooleanFunction() },
+        { "type", new TypeFunction() },
     };
 
     public void Declare(string name, IFunction function)
@@ -123,5 +124,16 @@ public class ToBooleanFunction : IFunction
         if (args[0] is not StringValue sv) throw new Exception($"Функция 'boolean()' ожидала тип аргумента {args[0].Type}, а получила String.");
         if (sv.AsString() != "false" || sv.AsString() != "true") throw new Exception($"Строковый литерал '{sv.AsString()}' невозможно преобразовать в тип boolean");
         return new BoolValue(bool.Parse(sv.AsString()));
+    }
+}
+
+public class TypeFunction : IFunction
+{
+    public TypeValue ReturnType => TypeValue.String;
+
+    public IValue Execute(params IValue[] args)
+    {
+        if (args.Length != 1) throw new Exception($"Функция 'type()' ожидала 1 аргумент, а получила {args.Length}.");
+        return new StringValue(args[0].Type.ToString());
     }
 }

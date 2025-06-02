@@ -237,6 +237,7 @@ public class Translator()
             "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)});",
             "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)});",
             "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)});",
+            "type" => $"RuntimeHelper.GetType({string.Join(", ", args)});",
             _ => $"{fcs.Name}({string.Join(", ", args)});"
         };
     }
@@ -268,14 +269,14 @@ public class Translator()
         if (le.Value is StringValue) return $"\"{translatedExpression}\"";
         if (le.Value is BoolValue) return translatedExpression.ToLower();
 
-        return translatedExpression;
+        return $"{translatedExpression.Replace(",", ".")}{GetDefaultSuffixByType(le.Value.Type)}";
     }
 
     private static string TranslateUnaryExpression(UnaryExpression ue) => $"{ue.Op.Value}{TranslateExpression(ue.Expression)}";
 
-    private static string TranslateBinaryExpression(BinaryExpression be) => $"{TranslateExpression(be.Left)} {be.Op.Value} {TranslateExpression(be.Right)}";
+    private static string TranslateBinaryExpression(BinaryExpression be) => $"({TranslateExpression(be.Left)} {be.Op.Value} {TranslateExpression(be.Right)})";
 
-    private static string TranslateTernaryExpression(TernaryExpression te) => $"{TranslateExpression(te.ConditionExpression)} ? {TranslateExpression(te.TrueExpression)} : {TranslateExpression(te.FalseExpression)}";
+    private static string TranslateTernaryExpression(TernaryExpression te) => $"({TranslateExpression(te.ConditionExpression)} ? {TranslateExpression(te.TrueExpression)} : {TranslateExpression(te.FalseExpression)})";
 
     private static string TranslateFunctionCallExpression(FunctionCallExpression fce)
     {
@@ -292,6 +293,7 @@ public class Translator()
             "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)})",
             "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)})",
             "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)})",
+            "type" => $"RuntimeHelper.GetType({string.Join(", ", args)})",
             _ => $"{fce.Name}({string.Join(", ", args)})"
         };
     }
@@ -310,8 +312,17 @@ public class Translator()
     {
         string[] args = new string[mce.Args.Count];
         for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(mce.Args[i]);
-        return $"{TranslateExpression(mce.Target)}.{mce.MethodName}({string.Join(", ", args)});";
+        return $"{TranslateExpression(mce.Target)}.{mce.MethodName}({string.Join(", ", args)})";
     }
+
+    private static string GetDefaultSuffixByType(TypeValue type) => type switch
+    {
+        TypeValue.Int => "",
+        TypeValue.Float => "f",
+        TypeValue.Double => "d",
+        TypeValue.Decimal => "m",
+        _ => throw new Exception($"Невозможно определить суффикс нечислового типа '{type}'")
+    };
 
     private static string GetDefaultValueByTypeValue(TypeValue type)
     {

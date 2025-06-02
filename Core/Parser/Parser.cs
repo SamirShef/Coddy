@@ -361,7 +361,7 @@ public class Parser (List<Token> tokens)
     {
         Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
         IExpression condition = ParseExpression();
-        Consume(TokenType.RParen, "Отсутствует токен окончания условного выражения ')'.");
+        Consume(TokenType.RParen, $"Отсутствует токен окончания условного выражения ')'.");
         IStatement block = ParseStatementOrBlock();
 
         return new WhileLoopStatement(variableStorage, condition, block);
@@ -561,7 +561,9 @@ public class Parser (List<Token> tokens)
 
         if (Match(TokenType.This))
         {
-            return new VariableExpression(variableStorage, "this");
+            IExpression expression = new VariableExpression(variableStorage, "this");
+            expression = ParseFieldChain(expression);
+            return expression;
         }
 
         if (Match(TokenType.LParen))

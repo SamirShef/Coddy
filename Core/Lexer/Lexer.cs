@@ -43,6 +43,12 @@ public class Lexer (string source)
                 continue;
             }
 
+            if (source[pos] == '/')
+            {
+                if (source[pos + 1] == '/') { ReadComment(); continue; }
+                else if (source[pos + 1] == '*') { ReadMultilineComment(); continue; }
+            }
+
             if (char.IsLetter(source[pos]) || source[pos] == '_')
             {
                 yield return ReadIdentifierOrKeyword();
@@ -300,5 +306,26 @@ public class Lexer (string source)
         pos++;
 
         return new Token(TokenType.StringLiteral, builder.ToString());
+    }
+
+    private void ReadComment()
+    {
+        pos++;
+        while (pos < source.Length)
+        {
+            if (!"\r\n\0".Contains(source[pos])) pos++;
+            else break;
+        }
+    }
+
+    private void ReadMultilineComment()
+    {
+        pos += 2;
+        while (pos < source.Length)
+        {
+            if (source[pos] != '*' || source[pos + 1] != '/') pos++;
+            else break;
+        }
+        pos += 2;
     }
 }
