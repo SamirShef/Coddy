@@ -6,6 +6,8 @@ using Core.Values;
 using Core.Lexer;
 using Core.Runtime.OOP;
 using System.Collections.Generic;
+using System.Data.Common;
+using System;
 
 namespace Core.Parser;
 
@@ -30,7 +32,7 @@ public class Parser (List<Token> tokens)
     private IStatement ParseStatement()
     {
         if (Match(TokenType.Class)) return ParseClassDeclaration();
-        if (Match(TokenType.Let)) return ParseVariableDeclaration();
+        if (Match(TokenType.Let)) return ParseVariableDeclarationStatement();
         if (Match(TokenType.Identifier) || Match(TokenType.This))
         {
             if (Peek().Type == TokenType.Dot)
@@ -66,13 +68,13 @@ public class Parser (List<Token> tokens)
             if (Match(TokenType.Constructor)) statements.Add(ParseConstructorDeclaration(classInfo));
             else if (Peek().Type == TokenType.Private || Peek().Type == TokenType.Public)
             {
-                if (Peek(1).Type == TokenType.Func) statements.Add(ParseMethodDeclaration(classInfo));
-                else statements.Add(ParseFieldDeclaration(classInfo));
+                if (Peek(1).Type == TokenType.Func) statements.Add(ParseMethodDeclarationStatement(classInfo));
+                else statements.Add(ParseFieldDeclarationStatement(classInfo));
             }
             else
             {
-                if (Peek().Type == TokenType.Func) statements.Add(ParseMethodDeclaration(classInfo));
-                else statements.Add(ParseFieldDeclaration(classInfo));
+                if (Peek().Type == TokenType.Func) statements.Add(ParseMethodDeclarationStatement(classInfo));
+                else statements.Add(ParseFieldDeclarationStatement(classInfo));
             }
         }
 
@@ -102,7 +104,7 @@ public class Parser (List<Token> tokens)
         return new ConstructorDeclarationStatement(classInfo, constructor);
     }
 
-    private IStatement ParseFieldDeclaration(ClassInfo classInfo)
+    private IStatement ParseFieldDeclarationStatement(ClassInfo classInfo)
     {
         AccessModifier access = AccessModifier.Private;
         if (Match(TokenType.Public)) access = AccessModifier.Public;
@@ -112,6 +114,7 @@ public class Parser (List<Token> tokens)
         Token fieldNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
         Token typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления поля.");
+        if (Match(TokenType.LBracket)) return ParseFieldArrayDeclarationStatement(classInfo, fieldNameToken.Value, typeToken.Value, access);
         TypeValue type = GetTypeValueFromToken(typeToken.Type);
 
         IExpression? initialExpression = null;
@@ -121,7 +124,26 @@ public class Parser (List<Token> tokens)
         return new FieldDeclarationStatement(classInfo, fieldNameToken.Value, typeToken.Value, type, access, initialExpression);
     }
 
-    private IStatement ParseMethodDeclaration(ClassInfo classInfo)
+    private IStatement ParseFieldArrayDeclarationStatement(ClassInfo classInfo, string name, string typeValue, AccessModifier access)
+    {
+        Token primatyTypeToken = Peek(-2);
+        IExpression? size = null;
+        if (Peek().Type != TokenType.RBracket) size = ParseExpression();
+        Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'.");
+
+        List<IExpression> expressions = [];
+        if (Match(TokenType.Assign))
+        {
+            if (Match(TokenType.LBracket)) while (!Match(TokenType.RBracket)) if (!Match(TokenType.Comma)) expressions.Add(ParseExpression());
+            else expressions.Add(ParseExpression());
+        }
+
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new FieldArrayDeclarationStatement(classInfo, name, typeValue, TypeValue.Array, GetTypeValueFromToken(primatyTypeToken.Type), access, size, expressions);
+    }
+
+    private IStatement ParseMethodDeclarationStatement(ClassInfo classInfo)
     {
         AccessModifier access = AccessModifier.Private;
         if (Match(TokenType.Public)) access = AccessModifier.Public;
@@ -167,19 +189,44 @@ public class Parser (List<Token> tokens)
         return new MethodDeclarationStatement(classInfo, methodNameToken.Value, method, access);
     }
 
-    private IStatement ParseVariableDeclaration(bool fromForStatement = false)
+    private IStatement ParseVariableDeclarationStatement(bool fromForStatement = false)
     {
         Token identifier = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         string identifierName = identifier.Value;
         Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
         Token baseTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления переменной.");
         TypeValue baseType = GetTypeValueFromToken(baseTypeToken.Type);
+        
+        if (Match(TokenType.LBracket)) return ParseArrayDeclarationStatement(identifierName, baseTypeToken.Value, baseType);
+
         IExpression? expression = null;
         if (Match(TokenType.Assign)) expression = ParseExpression();
         if (expression != null) expression = ParseFieldChain(expression);
         if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
         return new VariableDeclarationStatement(variableStorage, classStorage, identifierName, baseTypeToken.Value, baseType, expression);
+    }
+
+    private IStatement ParseArrayDeclarationStatement(string name, string baseTypeValue, TypeValue baseType)
+    {
+        IExpression? size = null;
+        if (Peek().Type != TokenType.RBracket) size = ParseExpression();
+        Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'.");
+
+        List<IExpression> expressions = [];
+        if (Match(TokenType.Assign))
+        {
+            if (Match(TokenType.LBracket))
+            {
+                Consume(TokenType.LBracket, $"Отсутствует токен открывающей квадратной скобки '[' ({Peek()}).");
+                while (!Match(TokenType.RBracket)) if (!Match(TokenType.Comma)) expressions.Add(ParseExpression());
+            }
+            else expressions.Add(ParseExpression());
+        }
+
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new ArrayDeclarationStatement(variableStorage, name, size, baseTypeValue, baseType, expressions);
     }
 
     private IStatement ParseFunctionCallStatement()
@@ -214,6 +261,11 @@ public class Parser (List<Token> tokens)
             return ParseFieldAssignmentStatement(target, fromForStatement);
         }
 
+        if (Match(TokenType.LBracket))
+        {
+            return ParseArrayAssignmentStatement(identifierName);
+        }
+
         IExpression expression;
 
         if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
@@ -240,12 +292,43 @@ public class Parser (List<Token> tokens)
         return new AssignmentStatement(variableStorage, identifierName, expression);
     }
 
+    private IStatement ParseArrayAssignmentStatement(string name)
+    {
+        IExpression index = ParseExpression();
+        Consume(TokenType.RBracket, "");
+
+        IExpression expression;
+
+        if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
+        || Match(TokenType.MultiplyAssign) || Match(TokenType.DivideAssign)
+        || Match(TokenType.ModuloAssign) || Match(TokenType.Increment)
+        || Match(TokenType.Decrement))
+        {
+            Token opToken = Peek(-1);
+
+            if (opToken.Type == TokenType.Increment || opToken.Type == TokenType.Decrement) expression = new LiteralExpression(new IntValue(1));
+            else expression = ParseExpression();
+
+            Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+            return CreateCompoundAssignment(name, opToken, expression, true, index);
+        }
+
+        Consume(TokenType.Assign, "Отсутствует токен оператора присвоения.");
+
+        expression = ParseExpression();
+
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new ArrayAssignmentStatement(variableStorage, name, index, expression);
+    }
+
     private IStatement ParseFieldAssignmentStatement(IExpression target, bool fromForStatement)
     {
         while (Match(TokenType.Dot))
         {
             Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-            target = new FieldExpression(fieldToken.Value, target);
+            target = new FieldExpression(target, fieldToken.Value);
         }
 
         if (Match(TokenType.PlusAssign) || Match(TokenType.MinusAssign)
@@ -273,13 +356,13 @@ public class Parser (List<Token> tokens)
 
             if (target is not FieldExpression fieldExpr) throw new Exception("Невозможно присвоить новое значение полю: объект не является полем.");
 
-            IExpression currentValue = new FieldExpression(fieldExpr.Name, fieldExpr.TargetExpression);
+            IExpression currentValue = new FieldExpression(fieldExpr.Target, fieldExpr.Name);
             BinaryExpression compoundExpr = new(new Token(opType, opToken.Value), currentValue, rightExpr);
 
             IExpression assignmentExpr = compoundExpr;
             if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, opToken, assignmentExpr);
+            return new FieldAssignmentStatement(fieldExpr.Target, fieldExpr.Name, opToken, assignmentExpr);
         }
         else
         {
@@ -289,13 +372,13 @@ public class Parser (List<Token> tokens)
 
             if (target is not FieldExpression fieldExpr) throw new Exception("Невозможно присвоить новое значение полю: объект не является полем.");
 
-            return new FieldAssignmentStatement(fieldExpr.TargetExpression, fieldExpr.Name, new Token(TokenType.Assign, "="), expression);
+            return new FieldAssignmentStatement(fieldExpr.Target, fieldExpr.Name, new Token(TokenType.Assign, "="), expression);
         }
     }
 
-    private IStatement CreateCompoundAssignment(string varName, Token opToken, IExpression rightExpr)
+    private IStatement CreateCompoundAssignment(string varName, Token opToken, IExpression rightExpr, bool isArray = false, IExpression? index = null)
     {
-        var varExpr = new VariableExpression(variableStorage, varName);
+        IExpression varExpr = isArray && index != null ? new ArrayExpression(variableStorage, varName, index) : new VariableExpression(variableStorage, varName);
 
         BinaryExpression compoundExpr = opToken.Type switch
         {
@@ -309,7 +392,7 @@ public class Parser (List<Token> tokens)
             _ => throw new Exception($"Неподдерживаемый оператор: {opToken.Value}")
         };
 
-        return new AssignmentStatement(variableStorage, varName, compoundExpr);
+        return isArray && index != null ? new ArrayAssignmentStatement(variableStorage, varName, index, compoundExpr) : new AssignmentStatement(variableStorage, varName, compoundExpr);
     }
 
     private IStatement ParseFunctionDeclarationStatement()
@@ -321,7 +404,8 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Colon))
         {
             typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления функции.");
-            returnType = GetTypeValueFromToken(typeToken.Type);
+            if (Match(TokenType.LBracket)) { Consume(TokenType.RBracket, ""); returnType = TypeValue.Array; }
+            else returnType = GetTypeValueFromToken(typeToken.Type);
         }
 
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
@@ -383,7 +467,7 @@ public class Parser (List<Token> tokens)
     {
         Consume(TokenType.LParen, "Отсутствует токен начала условного выражения '('.");
 
-        IStatement indexatorDeclaration = ParseVariableDeclaration(true);
+        IStatement indexatorDeclaration = ParseVariableDeclarationStatement(true);
         Consume(TokenType.Colon, "Отсутствует токен разделения параметров цикла for ':'.");
         IExpression condition = ParseExpression();
         Consume(TokenType.Colon, "Отсутствует токен разделения параметров цикла for ':'.");
@@ -598,7 +682,8 @@ public class Parser (List<Token> tokens)
                 pos++;
                 IExpression expression;
 
-                if (Peek().Type == TokenType.LParen) expression = ParseFunctionCall(token.Value);
+                if (Match(TokenType.LParen)) expression = ParseFunctionCall(token.Value);
+                else if (Match(TokenType.LBracket)) expression = ParseArrayExpression(token.Value);
                 else expression = new VariableExpression(variableStorage, token.Value);
 
                 expression = ParseFieldChain(expression);
@@ -615,19 +700,33 @@ public class Parser (List<Token> tokens)
         while (Match(TokenType.Dot))
         {
             Token fieldToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
-            
+
             if (Match(TokenType.LParen)) expr = new MethodCallExpression(expr, fieldToken.Value, ParseArguments());
-            else expr = new FieldExpression(fieldToken.Value, expr);
+            else if (Match(TokenType.LBracket)) expr = ParseArrayFieldExpression(expr, fieldToken.Value);
+            else expr = new FieldExpression(expr, fieldToken.Value);
         }
 
         return expr;
     }
 
+    private IExpression ParseArrayFieldExpression(IExpression target, string name)
+    {
+        IExpression index = ParseExpression();
+        Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'.");
+
+        return new ArrayFieldExpression(target, name, index);
+    }
+
     private IExpression ParseFunctionCall(string functionName)
     {
-        Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
-
         return new FunctionCallExpression(functionStorage, functionName, ParseArguments());
+    }
+
+    private IExpression ParseArrayExpression(string name)
+    {
+        IExpression index = ParseExpression();
+        Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'.");
+        return new ArrayExpression(variableStorage, name, index);
     }
 
     private IStatement ParseMethodCallOrFieldAssignment(IExpression target)
@@ -640,7 +739,7 @@ public class Parser (List<Token> tokens)
                 List<IExpression> args = ParseArguments();
                 target = new MethodCallExpression(target, fieldNameToken.Value, args);
             }
-            else target = new FieldExpression(fieldNameToken.Value, target);
+            else target = new FieldExpression(target, fieldNameToken.Value);
         }
 
         if (Match(TokenType.Semicolon)) return new MethodCallStatement(target);
@@ -670,6 +769,7 @@ public class Parser (List<Token> tokens)
         TypeValue.String => right == TypeValue.String,
         TypeValue.Bool => right == TypeValue.Bool,
         TypeValue.Class => right == TypeValue.Class,
+        TypeValue.Array => right == TypeValue.Array,
         TypeValue.Void => false,
         _ => false
     };

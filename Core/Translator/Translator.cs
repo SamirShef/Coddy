@@ -47,11 +47,14 @@ public class Translator()
     {
         ClassDeclarationStatement cds => TranslateClassDeclarationStatement(cds),
         FieldDeclarationStatement fds => TranslateFieldDeclarationStatement(fds),
+        FieldArrayDeclarationStatement fads => TranslateFieldArrayDeclarationStatement(fads),
         FieldAssignmentStatement fas => TranslateFieldAssignmentStatement(fas),
         MethodDeclarationStatement mds => TranslateMethodDeclarationStatement(mds),
         MethodCallStatement mcs => TranslateMethodCallStatement(mcs),
         ConstructorDeclarationStatement cds => TranslateConstructorDeclarationStatement(cds),
-        VariableDeclarationStatement vsd => TranslateVariableDeclarationStatement(vsd),
+        VariableDeclarationStatement vds => TranslateVariableDeclarationStatement(vds),
+        ArrayDeclarationStatement ads => TranslateArrayDeclarationStatement(ads),
+        ArrayAssignmentStatement aas => TranslateArrayAssignmentStatement(aas),
         AssignmentStatement ags => TranslateAssignmentStatement(ags),
         IfElseStatement ies => TranslateIfElseStatement(ies),
         WhileLoopStatement wls => TranslateWhileStatement(wls),
@@ -83,6 +86,31 @@ public class Translator()
         builder.Append($"{fds.Access.ToString().ToLower()} {typeString} {fds.Name}");
         if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
         builder.Append(';');
+
+        return builder.ToString();
+    }
+
+    private static string TranslateFieldArrayDeclarationStatement(FieldArrayDeclarationStatement fads)
+    {
+        StringBuilder builder = new();
+
+        TypeValue type = fads.Type;
+        string typeString = type.ToString().ToLower();
+        if (type == TypeValue.Class) typeString = fads.TypeValue;
+        if (type == TypeValue.Array) typeString = fads.PrimaryType.ToString().ToLower();
+
+        string sizeString = fads.Size != null ? TranslateExpression(fads.Size) : "";
+
+        builder.Append($"{fads.Access.ToString().ToLower()} {typeString}[] {fads.Name} = new {typeString}[{sizeString}] " + "{ ");
+
+        if (fads.Expressions.Count > 0)
+        {
+            string[] expressions = new string[fads.Expressions.Count];
+            for (int i = 0; i < expressions.Length; i++) expressions[i] = TranslateExpression(fads.Expressions[i]);
+            builder.Append(string.Join(", ", expressions));
+        }
+
+        builder.Append(" };");
 
         return builder.ToString();
     }
@@ -133,6 +161,31 @@ public class Translator()
         
         return builder.ToString();
     }
+
+    private static string TranslateArrayDeclarationStatement(ArrayDeclarationStatement ads)
+    {
+        StringBuilder builder = new();
+
+        TypeValue type = ads.Type;
+        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : ads.TypeValue;
+
+        string sizeString = ads.Size != null ? TranslateExpression(ads.Size) : "";
+
+        builder.Append($"{typeString}[] {ads.Name} = new {typeString}[{sizeString}] " + "{ ");
+        if (ads.Expressions.Count > 0)
+        {
+            string[] expressions = new string[ads.Expressions.Count];
+            for (int i = 0; i < expressions.Length; i++) expressions[i] = TranslateExpression(ads.Expressions[i]);
+
+            builder.Append(string.Join(", ", expressions));
+        }
+
+        builder.Append(" };");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateArrayAssignmentStatement(ArrayAssignmentStatement aas) => $"{aas.Name}[{TranslateExpression(aas.Index)}] = {TranslateExpression(aas.Expression)};";
 
     private static string TranslateAssignmentStatement(AssignmentStatement ags) => $"{ags.Name} = {TranslateExpression(ags.NewExpression)};";
 
@@ -237,6 +290,7 @@ public class Translator()
             "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)});",
             "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)});",
             "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)});",
+            "len" => $"RuntimeHelper.GetLen({string.Join(", ", args)});",
             "type" => $"RuntimeHelper.GetType({string.Join(", ", args)});",
             _ => $"{fcs.Name}({string.Join(", ", args)});"
         };
@@ -252,6 +306,8 @@ public class Translator()
     {
         LiteralExpression le => TranslateLiteralExpression(le),
         VariableExpression ve => ve.Name,
+        ArrayExpression ae => TranslateArrayExpression(ae),
+        ArrayFieldExpression afe => TranslateArrayFieldExpression(afe),
         UnaryExpression ue => TranslateUnaryExpression(ue),
         BinaryExpression be => TranslateBinaryExpression(be),
         TernaryExpression te => TranslateTernaryExpression(te),
@@ -271,6 +327,10 @@ public class Translator()
 
         return $"{translatedExpression.Replace(",", ".")}{GetDefaultSuffixByType(le.Value.Type)}";
     }
+
+    private static string TranslateArrayExpression(ArrayExpression ae) => $"{ae.Name}[{TranslateExpression(ae.Index)}]";
+
+    private static string TranslateArrayFieldExpression(ArrayFieldExpression afe) => $"{TranslateExpression(afe.Target)}.{afe.Name}[{TranslateExpression(afe.Index)}]";
 
     private static string TranslateUnaryExpression(UnaryExpression ue) => $"{ue.Op.Value}{TranslateExpression(ue.Expression)}";
 
@@ -293,6 +353,7 @@ public class Translator()
             "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)})",
             "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)})",
             "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)})",
+            "len" => $"RuntimeHelper.GetLen({string.Join(", ", args)})",
             "type" => $"RuntimeHelper.GetType({string.Join(", ", args)})",
             _ => $"{fce.Name}({string.Join(", ", args)})"
         };
@@ -306,7 +367,7 @@ public class Translator()
         return $"new {nce.Name}({string.Join(", ", args)})";
     }
 
-    private static string TranslateFieldExpression(FieldExpression fe) => $"{TranslateExpression(fe.TargetExpression)}.{fe.Name}";
+    private static string TranslateFieldExpression(FieldExpression fe) => $"{TranslateExpression(fe.Target)}.{fe.Name}";
 
     private static string TranslateMethodCallExpression(MethodCallExpression mce)
     {
