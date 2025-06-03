@@ -162,8 +162,7 @@ while (a < 10) {
 let a : int;
 do {
   a++;
-}
-while (a < 10);
+} while (a < 10);
 ```
 
 ### Цикл for
