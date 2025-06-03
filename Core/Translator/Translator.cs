@@ -382,7 +382,8 @@ public class Translator()
     {
         string[] args = new string[mce.Args.Count];
         for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(mce.Args[i]);
-        return $"{TranslateExpression(mce.Target)}.{mce.MethodName}({string.Join(", ", args)})";
+        string targetExpr = mce.Start != null && mce.Start is VariableExpression ve && ve.Name == "this" ? "" : $"{TranslateExpression(mce.Target)}.";
+        return $"{targetExpr}{mce.MethodName}({string.Join(", ", args)})";
     }
 
     private static string GetDefaultSuffixByType(TypeValue type) => type switch

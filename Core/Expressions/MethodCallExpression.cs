@@ -12,10 +12,11 @@ public class MethodCallExpression(IExpression target, string methodName, List<IE
     public IExpression Target { get; } = target;
     public string MethodName { get; } = methodName;
     public List<IExpression> Args { get; } = arguments;
+    public IExpression? Start { get; } = start;
 
     public IValue Evaluate()
     {
-        if (start != null && classStorage != null && start is VariableExpression startVariable && classStorage.Exist(startVariable.Name))
+        if (Start != null && classStorage != null && Start is VariableExpression startVariable && classStorage.Exist(startVariable.Name))
             return new StaticMethodCallExpression(classStorage, startVariable.Name, MethodName, Args).Evaluate();
 
         IValue targetValue = target.Evaluate();
