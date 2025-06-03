@@ -17,6 +17,7 @@ public class NewClassExpression(ClassStorage classStorage, string name, List<IEx
         var classInfo = classStorage.Get(name);
         var instance = new ClassInstance(classInfo);
 
+        if (classInfo.IsStatic) throw new Exception($"Создание экземпляра класса невозможно: класс '{name}' является статическим.");
         if (classInfo.Constructor != null)
         {
             if (arguments == null) throw new Exception($"Конструктор класса '{name}' ожидает аргументы.");

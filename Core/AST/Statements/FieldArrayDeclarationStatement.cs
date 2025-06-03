@@ -4,7 +4,7 @@ using Core.Values;
 
 namespace Core.AST.Statements;
 
-public class FieldArrayDeclarationStatement(ClassInfo classInfo, string name, string typeValue, TypeValue type, TypeValue primaryType, AccessModifier access, IExpression size, List<IExpression> expressions) : IStatement
+public class FieldArrayDeclarationStatement(ClassInfo classInfo, string name, string typeValue, TypeValue type, TypeValue primaryType, AccessModifier access, IExpression size, List<IExpression> expressions, bool isStatic = false) : IStatement
 {
     public string Name { get; } = name;
     public string TypeValue { get; } = typeValue;
@@ -13,6 +13,7 @@ public class FieldArrayDeclarationStatement(ClassInfo classInfo, string name, st
     public AccessModifier Access { get; } = access;
     public IExpression Size { get; } = size;
     public List<IExpression> Expressions { get; } = expressions;
+    public bool IsStatic { get; } = isStatic;
 
     public void Execute()
     {
@@ -26,6 +27,6 @@ public class FieldArrayDeclarationStatement(ClassInfo classInfo, string name, st
 
         foreach (IValue value in values) if (value.Type != Type) throw new Exception($"Типы элементов не соответствуют основному типу массива {Type}.");
 
-        classInfo.AddField(Name, new FieldInfo(type, Access, new ArrayValue(values, Type)));
+        classInfo.AddField(Name, new FieldInfo(type, Access, new ArrayValue(values, Type), IsStatic));
     }
 }

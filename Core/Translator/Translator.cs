@@ -1,6 +1,5 @@
 ﻿using Core.AST.Statements;
 using Core.Expressions;
-using Core.Runtime;
 using Core.Values;
 using System.Text;
 
@@ -71,7 +70,9 @@ public class Translator()
     private static string TranslateClassDeclarationStatement(ClassDeclarationStatement cds)
     {
         StringBuilder builder = new();
-        builder.AppendLine($"public class {cds.ClassInfo.Name} " + '{');
+        bool isStatic = cds.ClassInfo.IsStatic;
+        string isStaticString = isStatic ? "static" : "";
+        builder.AppendLine($"public {isStaticString} class {cds.ClassInfo.Name} " + '{');
         foreach (IStatement statement in cds.Statements) builder.AppendLine(TranslateCodePart(statement));
         builder.AppendLine("}");
 
@@ -83,7 +84,9 @@ public class Translator()
         StringBuilder builder = new();
         TypeValue type = fds.Type;
         string typeString = type != TypeValue.Class ? type.ToString().ToLower() : fds.TypeValue;
-        builder.Append($"{fds.Access.ToString().ToLower()} {typeString} {fds.Name}");
+        bool isStatic = fds.IsStatic;
+        string isStaticString = isStatic ? "static" : "";
+        builder.Append($"{fds.Access.ToString().ToLower()} {isStaticString} {typeString} {fds.Name}");
         if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
         builder.Append(';');
 
@@ -122,7 +125,9 @@ public class Translator()
         StringBuilder builder = new();
         string[] parameters = new string[mds.Method.Parameters.Count];
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(mds.Method.Parameters[i]);
-        builder.AppendLine($"{mds.Access.ToString().ToLower()} {mds.Method.ReturnType.ToString().ToLower()} {mds.MethodName}({string.Join(", ", parameters)}) " + '{');
+        bool isStatic = mds.IsStatic;
+        string isStaticString = isStatic ? "static" : "";
+        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {mds.Method.ReturnType.ToString().ToLower()} {mds.MethodName}({string.Join(", ", parameters)}) " + '{');
         IStatement body = mds.Method.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -367,7 +372,11 @@ public class Translator()
         return $"new {nce.Name}({string.Join(", ", args)})";
     }
 
-    private static string TranslateFieldExpression(FieldExpression fe) => $"{TranslateExpression(fe.Target)}.{fe.Name}";
+    private static string TranslateFieldExpression(FieldExpression fe)
+    {
+        string targetExpr = fe.Start != null && fe.Start is VariableExpression ve && ve.Name == "this" ? "" : $"{TranslateExpression(fe.Target)}.";
+        return $"{targetExpr}{fe.Name}";
+    }
 
     private static string TranslateMethodCallExpression(MethodCallExpression mce)
     {
