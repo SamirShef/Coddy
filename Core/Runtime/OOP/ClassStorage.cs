@@ -7,7 +7,7 @@ public class ClassStorage
     public void Declare(string name, ClassInfo classInfo)
     {
         if (classes.ContainsKey(name)) throw new Exception($"Декларация класса невозможна: класс с именем '{name}' уже существует.");
-
+        Console.WriteLine($"{name} : {classInfo.IsStatic}");
         classes.Add(name, classInfo);
     }
 

@@ -28,6 +28,7 @@ public class Parser (List<Token> tokens)
 
     private IStatement ParseStatement()
     {
+        if (Match(TokenType.Include)) return ParseIncludeStatement();
         if (Match(TokenType.Static) || Match(TokenType.Class)) return ParseClassDeclaration();
         if (Match(TokenType.Let)) return ParseVariableDeclarationStatement();
         if (Match(TokenType.Identifier) || Match(TokenType.This))
@@ -50,6 +51,14 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Return)) return ParseReturnStatement();
 
         throw new Exception($"Неожиданный токен: {Peek()}.");
+    }
+
+    private IStatement ParseIncludeStatement()
+    {
+        Token libraryPathToken = Consume(TokenType.StringLiteral, "Отсутствует путь к библиотеке в виде строкового литерала.");
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new IncludeStatement(classStorage, libraryPathToken.Value);
     }
 
     private IStatement ParseClassDeclaration()

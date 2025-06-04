@@ -38,12 +38,13 @@ public class Translator()
 
     private static bool CodePartInGlobal(IStatement statement) => statement switch
     {
-        ClassDeclarationStatement or FunctionDeclarationStatement => true,
+        IncludeStatement or ClassDeclarationStatement or FunctionDeclarationStatement => true,
         _ => false
     };
 
     private static string TranslateCodePart(IStatement statement) => statement switch
     {
+        IncludeStatement ins => TranslateIncludeStatement(ins),
         ClassDeclarationStatement cds => TranslateClassDeclarationStatement(cds),
         FieldDeclarationStatement fds => TranslateFieldDeclarationStatement(fds),
         FieldArrayDeclarationStatement fads => TranslateFieldArrayDeclarationStatement(fads),
@@ -66,6 +67,22 @@ public class Translator()
         ContinueStatement => "continue;",
         _ => throw new Exception($"Невозможно обработать данный тип команды ({statement}).")
     };
+
+    private static string TranslateIncludeStatement(IncludeStatement ins)
+    {
+        string fullPath = Path.Combine("Libraries", ins.LibraryPath);
+        if (!File.Exists(fullPath)) throw new Exception($"Библиотека не найдена: {fullPath}");
+
+        string source = File.ReadAllText(fullPath);
+        Lexer.Lexer lexer = new(source);
+        Parser.Parser parser = new([.. lexer.Tokenize()]);
+        List<IStatement> statements = parser.Parse();
+
+        StringBuilder builder = new();
+        foreach (IStatement statement in statements) if (statement is ClassDeclarationStatement classDeclaration) builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
+
+        return builder.ToString();
+    }
 
     private static string TranslateClassDeclarationStatement(ClassDeclarationStatement cds)
     {
