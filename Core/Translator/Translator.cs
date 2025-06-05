@@ -72,7 +72,13 @@ public class Translator()
 
     private static string TranslateIncludeStatement(IncludeStatement ins)
     {
-        string fullPath = Path.Combine("Libraries", ins.LibraryPath);
+        static string GetProjectRootPath()
+        {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            return Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", ".."));
+        }
+
+        string fullPath = Path.Combine(GetProjectRootPath(), "Core", "Libraries", ins.LibraryPath);
         if (!File.Exists(fullPath)) throw new Exception($"Библиотека не найдена: {fullPath}");
 
         string extension = Path.GetExtension(fullPath).ToLower();

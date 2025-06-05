@@ -1,3 +1,0 @@
-include "system.cd";
-
-file.writeAllText("C:/Users/Samir/Desktop/math.cd", file.readAllText("H:/MyProjects/Coddy/IDE/bin/Debug/net8.0-windows/Libraries/math.cd"));

@@ -3,8 +3,6 @@ using Core.Runtime.OOP;
 using Core.Values;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Core.AST.Statements;
 using Core.Expressions;
 using Core.Runtime;
 
@@ -15,9 +13,16 @@ public class IncludeStatement(ClassStorage classStorage, string libraryPath) : I
     public ClassStorage ClassStorage { get; } = classStorage;
     public string LibraryPath { get; } = libraryPath;
 
+    private static string GetProjectRootPath()
+    {
+        string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        // Поднимаемся на 4 уровня вверх от IDE/bin/Debug/net8.0-windows до корня проекта
+        return Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", ".."));
+    }
+
     public void Execute()
     {
-        string fullPath = Path.Combine("Libraries", LibraryPath);
+        string fullPath = Path.Combine(GetProjectRootPath(), "Core", "Libraries", LibraryPath);
         if (!File.Exists(fullPath)) throw new Exception($"Библиотека не найдена: {fullPath}");
 
         string source = File.ReadAllText(fullPath);
