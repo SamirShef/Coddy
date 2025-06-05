@@ -1,0 +1,57 @@
+static class math {
+	public static let pi : double = 3.14159265358979323846d;
+	public static let e : double = 2.71828182845904523536d;
+
+	public static func sqrt : double (num : double) {
+		if (num < 0) return -1;
+
+		let min : double;
+		let max : double;
+		let accuracy : double = 0.000000000001d;
+
+		for (i : int : i < num : i++) {
+			if (i * i > num) {
+				min = i - 1;
+				max = i;
+				break;
+			}
+		}
+
+		let average : double = (max + min) / 2;
+		let result : double = average;
+
+		while (this.abs(num - average * average) >= accuracy) {
+			if (average * average > num) { max = average; average = (max + min) / 2; }
+			else if (average * average < num) { min = average; average = (max + min) / 2; }
+			result = average;
+		}
+
+		return result;
+	}
+
+	public static func abs : double (num : double) {
+		if (num < 0) return num * -1;
+		return num;
+	}
+
+	public static func round : int (num : double) {
+		if (num % 1 >= 0.5d) return to_int(num - num % 1 + 1);
+		return to_int(num - num % 1);
+	}
+
+	public static func floor : int (num : double) {
+		return to_int(num - num % 1);
+	}
+
+	public static func ceil : int (num : double) {
+		return to_int(num - (num % 1 != 0 ? (num > 0 ? num % 1 : (1 + num % 1)) : 0));
+	}
+
+	public static func max : double (a : double, b : double) {
+		return a > b ? a : b;
+	}
+
+	public static func min : double (a : double, b : double) {
+		return a < b ? a : b;
+	}
+}
