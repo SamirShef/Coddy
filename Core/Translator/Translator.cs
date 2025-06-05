@@ -2,6 +2,8 @@
 using Core.Expressions;
 using Core.Values;
 using System.Text;
+using System.Reflection;
+using System.Collections.Generic;
 
 namespace Core.Translator;
 
@@ -73,15 +75,166 @@ public class Translator()
         string fullPath = Path.Combine("Libraries", ins.LibraryPath);
         if (!File.Exists(fullPath)) throw new Exception($"Библиотека не найдена: {fullPath}");
 
+        string extension = Path.GetExtension(fullPath).ToLower();
+        return extension switch
+        {
+            ".cd" => TranslateCoddyLibrary(fullPath),
+            ".dll" => TranslateDLLLibrary(fullPath),
+            ".cs" => TranslateCSharpLibrary(fullPath),
+            _ => throw new Exception($"Файл с расширением '{extension}' не является поддерживаемым библиотечным файлом. Поддерживаемые расширения: .cd, .dll, .cs"),
+        };
+    }
+
+    private static string TranslateCoddyLibrary(string fullPath)
+    {
         string source = File.ReadAllText(fullPath);
         Lexer.Lexer lexer = new(source);
         Parser.Parser parser = new([.. lexer.Tokenize()]);
         List<IStatement> statements = parser.Parse();
 
         StringBuilder builder = new();
-        foreach (IStatement statement in statements) if (statement is ClassDeclarationStatement classDeclaration) builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
+        foreach (IStatement statement in statements)
+        {
+            if (statement is IncludeStatement includeStatement) builder.AppendLine(TranslateIncludeStatement(includeStatement));
+            if (statement is ClassDeclarationStatement classDeclaration) builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
+        }
 
         return builder.ToString();
+    }
+
+    private static string TranslateDLLLibrary(string dllPath)
+    {
+        try
+        {
+            Assembly assembly = Assembly.LoadFrom(dllPath);
+            StringBuilder builder = new();
+
+            foreach (Type type in assembly.GetTypes())
+            {
+                if (type.IsPublic || type.IsNestedPublic)
+                {
+                    builder.AppendLine($"public class {type.Name} {{");
+                    
+                    foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+                    {
+                        if (!method.IsSpecialName)
+                        {
+                            string parameters = string.Join(", ", method.GetParameters().Select(p => $"{GetCSTypeName(p.ParameterType)} {p.Name}"));
+                            string staticModifier = method.IsStatic ? "static " : "";
+                            string returnType = GetCSTypeName(method.ReturnType);
+                            string methodName = EscapeCSharpKeyword(method.Name);
+                            
+                            builder.AppendLine($"public {staticModifier}{returnType} {methodName}({parameters}) {{");
+                            
+                            var methodBody = method.GetMethodBody();
+                            if (methodBody != null)
+                            {
+                                var ilBytes = methodBody.GetILAsByteArray();
+                                if (ilBytes != null && ilBytes.Length > 0)
+                                {
+                                    if (method.ReturnType == typeof(void))
+                                    {
+                                        if (method.IsStatic) builder.AppendLine($"{GetFullTypeName(type)}.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                        else builder.AppendLine($"this.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                    }
+                                    else
+                                    {
+                                        if (method.IsStatic) builder.AppendLine($"return {GetFullTypeName(type)}.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                        else builder.AppendLine($"return this.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (method.ReturnType == typeof(void))
+                                {
+                                    if (method.IsStatic) builder.AppendLine($"{GetFullTypeName(type)}.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                    else builder.AppendLine($"this.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                }
+                                else
+                                {
+                                    if (method.IsStatic) builder.AppendLine($"return {GetFullTypeName(type)}.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                    else builder.AppendLine($"return this.{methodName}({string.Join(", ", method.GetParameters().Select(p => p.Name))});");
+                                }
+                            }
+                            
+                            builder.AppendLine("}");
+                        }
+                    }
+
+                    foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
+                    {
+                        string staticModifier = field.IsStatic ? "static " : "";
+                        string fieldType = GetCSTypeName(field.FieldType);
+                        string fieldName = EscapeCSharpKeyword(field.Name);
+                        string fieldValue = FormatFieldValue(field.GetValue(null), field.FieldType);
+                        
+                        builder.AppendLine($"public {staticModifier}{fieldType} {fieldName} = {fieldValue};");
+                    }
+
+                    builder.AppendLine("}");
+                }
+            }
+
+            return builder.ToString();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Ошибка при трансляции DLL библиотеки: {ex.Message}");
+        }
+    }
+
+    private static string FormatFieldValue(object? value, Type type)
+    {
+        if (value == null) return "null";
+
+        return type.Name switch
+        {
+            "Int32" => value.ToString()!,
+            "Single" => $"{value.ToString()!.Replace(",", ".")}f",
+            "Double" => $"{value.ToString()!.Replace(",", ".")}d",
+            "Decimal" => $"{value.ToString()!.Replace(",", ".")}m",
+            "String" => $"\"{value}\"",
+            "Boolean" => value.ToString()!.ToLower(),
+            _ => value.ToString() ?? "null"
+        };
+    }
+
+    private static string TranslateCSharpLibrary(string csPath)
+    {
+        try
+        {
+            string source = File.ReadAllText(csPath);
+            return source;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Ошибка при трансляции C# библиотеки: {ex.Message}");
+        }
+    }
+
+    private static string GetCSTypeName(Type type)
+    {
+        if (type.IsGenericType)
+        {
+            string baseName = type.Name.Split('`')[0];
+            string[] genericArgs = type.GetGenericArguments().Select(GetCSTypeName).ToArray();
+            return $"{baseName}<{string.Join(", ", genericArgs)}>";
+        }
+
+        return type.Name switch
+        {
+            "Int32" => "int",
+            "Int64" => "long",
+            "Single" => "float",
+            "Double" => "double",
+            "Decimal" => "decimal",
+            "String" => "string",
+            "Boolean" => "bool",
+            "Void" => "void",
+            "Object" => "object",
+            _ => type.Name
+        };
     }
 
     private static string TranslateClassDeclarationStatement(ClassDeclarationStatement cds)
@@ -89,7 +242,8 @@ public class Translator()
         StringBuilder builder = new();
         bool isStatic = cds.ClassInfo.IsStatic;
         string isStaticString = isStatic ? "static" : "";
-        builder.AppendLine($"public {isStaticString} class {cds.ClassInfo.Name} " + '{');
+        string className = EscapeCSharpKeyword(cds.ClassInfo.Name);
+        builder.AppendLine($"public {isStaticString} class {className} {{");
         foreach (IStatement statement in cds.Statements) builder.AppendLine(TranslateCodePart(statement));
         builder.AppendLine("}");
 
@@ -100,10 +254,11 @@ public class Translator()
     {
         StringBuilder builder = new();
         TypeValue type = fds.Type;
-        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : fds.TypeValue;
+        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : EscapeCSharpKeyword(fds.TypeValue);
         bool isStatic = fds.IsStatic;
         string isStaticString = isStatic ? "static" : "";
-        builder.Append($"{fds.Access.ToString().ToLower()} {isStaticString} {typeString} {fds.Name}");
+        string fieldName = EscapeCSharpKeyword(fds.Name);
+        builder.Append($"{fds.Access.ToString().ToLower()} {isStaticString} {typeString} {fieldName}");
         if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
         builder.Append(';');
 
@@ -144,7 +299,8 @@ public class Translator()
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(mds.Method.Parameters[i]);
         bool isStatic = mds.IsStatic;
         string isStaticString = isStatic ? "static" : "";
-        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {mds.Method.ReturnType.ToString().ToLower()} {mds.MethodName}({string.Join(", ", parameters)}) " + '{');
+        string methodName = EscapeCSharpKeyword(mds.MethodName);
+        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {mds.Method.ReturnType.ToString().ToLower()} {methodName}({string.Join(", ", parameters)}) {{");
         IStatement body = mds.Method.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -153,14 +309,14 @@ public class Translator()
         return builder.ToString();
     }
 
-    private static string TranslateMethodCallStatement(MethodCallStatement mcs) => TranslateExpression(mcs.Expression);
+    private static string TranslateMethodCallStatement(MethodCallStatement mcs) => $"{TranslateExpression(mcs.Expression)};";
 
     private static string TranslateConstructorDeclarationStatement(ConstructorDeclarationStatement cds)
     {
         StringBuilder builder = new();
         string[] parameters = new string[cds.Constructor.Parameters.Count];
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(cds.Constructor.Parameters[i]);
-        builder.AppendLine($"public {cds.ClassInfo.Name}({string.Join(", ", parameters)}) " + '{');
+        builder.AppendLine($"public {cds.ClassInfo.Name}({string.Join(", ", parameters)}) {{");
         IStatement body = cds.Constructor.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -214,7 +370,7 @@ public class Translator()
     private static string TranslateIfElseStatement(IfElseStatement ies)
     {
         StringBuilder builder = new();
-        builder.AppendLine($"if ({TranslateExpression(ies.Condition)}) " + '{');
+        builder.AppendLine($"if ({TranslateExpression(ies.Condition)}) {{");
         IStatement ifBlock = ies.IfBlock;
         if (ifBlock is not BlockStatement ifBs) builder.AppendLine(TranslateCodePart(ifBlock));
         else foreach (IStatement statement in ifBs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -235,7 +391,7 @@ public class Translator()
     private static string TranslateWhileStatement(WhileLoopStatement wls)
     {
         StringBuilder builder = new();
-        builder.AppendLine($"while ({TranslateExpression(wls.Condition)}) " + '{');
+        builder.AppendLine($"while ({TranslateExpression(wls.Condition)}) {{");
         IStatement block = wls.Block;
         if (block is not BlockStatement bs) builder.Append(TranslateCodePart(block));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -259,7 +415,7 @@ public class Translator()
     private static string TranslateForStatement(ForLoopStatement fls)
     {
         StringBuilder builder = new();
-        builder.AppendLine($"for ({TranslateCodePart(fls.IndexatorDeclaration)} {TranslateExpression(fls.Condition)}; {TranslateCodePart(fls.Iterator).TrimEnd(';')}) " + '{');
+        builder.AppendLine($"for ({TranslateCodePart(fls.IndexatorDeclaration)} {TranslateExpression(fls.Condition)}; {TranslateCodePart(fls.Iterator).TrimEnd(';')}) {{");
         IStatement block = fls.Block;
         if (block is not BlockStatement bs) builder.Append(TranslateCodePart(block));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -278,7 +434,7 @@ public class Translator()
         TypeValue type = fds.UserFunction.ReturnType;
         string typeString = type != TypeValue.Class ? type.ToString().ToLower() : fds.UserFunction.ReturnTypeValue;
 
-        builder.AppendLine($"public static {typeString} {fds.Name} ({string.Join(", ", parameters)}) " + '{');
+        builder.AppendLine($"public static {typeString} {fds.Name} ({string.Join(", ", parameters)}) {{");
         
         IStatement body = fds.UserFunction.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
@@ -289,12 +445,10 @@ public class Translator()
         return builder.ToString();
     }
 
-    private static string TranslateFunctionParameter((string, string, TypeValue) parameter)
+    private static string TranslateFunctionParameter((string name, string typeValue, TypeValue type) parameter)
     {
-        TypeValue type = parameter.Item3;
-        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : parameter.Item2;
-
-        return $"{typeString} {parameter.Item1}";
+        string typeString = parameter.type != TypeValue.Class ? parameter.type.ToString().ToLower() : EscapeCSharpKeyword(parameter.typeValue);
+        return $"{typeString} {EscapeCSharpKeyword(parameter.name)}";
     }
 
     private static string TranslateFunctionCallStatement(FunctionCallStatement fcs)
@@ -424,5 +578,43 @@ public class Translator()
             TypeValue.Bool => "false",
             _ => throw new Exception($"Невозможно указать стандартное значение типу {type}")
         };
+    }
+
+    private static string EscapeCSharpKeyword(string identifier)
+    {
+        // Список зарезервированных слов C#
+        var keywords = new HashSet<string>
+        {
+            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
+            "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else",
+            "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for",
+            "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock",
+            "long", "namespace", "new", "null", "object", "operator", "out", "override", "params",
+            "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short",
+            "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true",
+            "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual",
+            "void", "volatile", "while", "file", "required", "init", "record", "with"
+        };
+
+        return keywords.Contains(identifier.ToLower()) ? $"@{identifier}" : identifier;
+    }
+
+    private static string GetFullTypeName(Type type)
+    {
+        if (type.Namespace == null) return type.Name;
+        
+        // Если тип находится в пространстве имен System, используем полный путь
+        if (type.Namespace.StartsWith("System."))
+        {
+            return type.FullName ?? type.Name;
+        }
+        
+        // Для пользовательских типов из библиотеки используем полный путь
+        if (type.Assembly != typeof(object).Assembly)
+        {
+            return type.FullName ?? type.Name;
+        }
+        
+        return type.Name;
     }
 }
