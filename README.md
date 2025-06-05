@@ -398,7 +398,7 @@ println(math.sqrt(25));  // Встроенный метод статическо
 ```
 
 # Поддержка
-`Quantum Games Studio` предоставляет возможность задавать вопросы и обращаться за просьбой об устранении ошибок в проекте `Coddy` напрямую на [почту](mailto:coddy.language.project@gmail.com) или в [телеграм](https://t.me/SamirShef).
+`Quantum Games Studio` предоставляет возможность задавать вопросы и обращаться за просьбой об устранении ошибок в проекте `Coddy` напрямую на [почту](https://mail.google.com/mail/?view=cm&fs=1&to=coddy.project@gmail.com) или в [телеграм](https://t.me/SamirShef).
 
 Изначальная идея к названию проекта была `Бутерброд++` (источник: [Burrittoss](https://t.me/Burrittosss)).
 
