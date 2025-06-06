@@ -73,5 +73,20 @@ public class ClassValue(ClassInstance instance) : IValue
         throw new Exception($"Невозможно применить оператор '||' с типом {Type} и {other.Type}.");
     }
 
+    public IValue LeftShift(IValue other)
+    {
+        throw new Exception($"Невозможно применить оператор '<<' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue RightShift(IValue other)
+    {
+        throw new Exception($"Невозможно применить оператор '>>' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue LogicalRightShift(IValue other)
+    {
+        throw new Exception($"Невозможно применить оператор '>>>' с типом {Type} и {other.Type}.");
+    }
+
     public string AsString() => Value.ToString();
 }

@@ -180,8 +180,24 @@ public class Lexer (string source)
                     }
                     else
                     {
-                        yield return new Token(TokenType.Greater, ">");
-                        pos++;
+                        if (source[pos + 1] == '>')
+                        {
+                            if (source[pos + 2] == '>')
+                            {
+                                yield return new Token(TokenType.LogicalRightShift, ">>>");
+                                pos += 3;
+                            }
+                            else
+                            {
+                                yield return new Token(TokenType.RightShift, ">>");
+                                pos += 2;
+                            }
+                        }
+                        else
+                        {
+                            yield return new Token(TokenType.Greater, ">");
+                            pos++;
+                        }
                     }
 
                     break;
@@ -193,8 +209,16 @@ public class Lexer (string source)
                     }
                     else
                     {
-                        yield return new Token(TokenType.Less, "<");
-                        pos++;
+                        if (source[pos + 1] == '<')
+                        {
+                            yield return new Token(TokenType.LeftShift, "<<");
+                            pos += 2;
+                        }
+                        else
+                        {
+                            yield return new Token(TokenType.Less, "<");
+                            pos++;
+                        }
                     }
 
                     break;

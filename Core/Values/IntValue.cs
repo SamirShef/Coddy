@@ -96,6 +96,27 @@ public class IntValue(int value) : IValue
         throw new Exception($"Невозможно применить оператор '||' с типом {Type} и {other.Type}.");
     }
 
+    public IValue LeftShift(IValue other)
+    {
+        if (other is IntValue iv) return new IntValue(AsInt() << iv.AsInt());
+
+        throw new Exception($"Невозможно применить оператор '<<' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue RightShift(IValue other)
+    {
+        if (other is IntValue iv) return new IntValue(AsInt() >> iv.AsInt());
+
+        throw new Exception($"Невозможно применить оператор '>>' с типом {Type} и {other.Type}.");
+    }
+
+    public IValue LogicalRightShift(IValue other)
+    {
+        if (other is IntValue iv) return new IntValue(AsInt() >>> iv.AsInt());
+
+        throw new Exception($"Невозможно применить оператор '>>>' с типом {Type} и {other.Type}.");
+    }
+
     public string AsString() => Value.ToString();
 
     public int AsInt() => (int)Value;

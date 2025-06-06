@@ -33,6 +33,9 @@ public class BinaryExpression(Token op, IExpression left, IExpression right) : I
             TokenType.NotEquals => leftVal.NotEquals(rightVal),
             TokenType.And => leftVal.And(rightVal),
             TokenType.Or => leftVal.Or(rightVal),
+            TokenType.LeftShift => leftVal.LeftShift(rightVal),
+            TokenType.RightShift => leftVal.RightShift(rightVal),
+            TokenType.LogicalRightShift => leftVal.LogicalRightShift(rightVal),
             _ => throw new Exception($"Неизвестный токен оператора: '{op.Value}'."),
         };
     }

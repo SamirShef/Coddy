@@ -18,6 +18,9 @@ public interface IValue
     IValue Or(IValue other);
     IValue Equals(IValue other);
     IValue NotEquals(IValue other);
+    IValue LeftShift(IValue other);
+    IValue RightShift(IValue other);
+    IValue LogicalRightShift(IValue other);
     string AsString();
 }
 

@@ -585,7 +585,7 @@ public class Parser (List<Token> tokens)
 
     private IExpression ParseComparison()
     {
-        IExpression expr = ParseAdditive();
+        IExpression expr = ParseShift();
 
         while (true)
         {
@@ -593,6 +593,21 @@ public class Parser (List<Token> tokens)
             else if (Match(TokenType.GreaterEqual)) expr = new BinaryExpression(new Token(TokenType.GreaterEqual, ">="), expr, ParseAdditive());
             else if (Match(TokenType.Less)) expr = new BinaryExpression(new Token(TokenType.Less, "<"), expr, ParseAdditive());
             else if (Match(TokenType.LessEqual)) expr = new BinaryExpression(new Token(TokenType.LessEqual, "<="), expr, ParseAdditive());
+            else break;
+        }
+
+        return expr;
+    }
+
+    private IExpression ParseShift()
+    {
+        IExpression expr = ParseAdditive();
+
+        while (true)
+        {
+            if (Match(TokenType.LeftShift)) expr = new BinaryExpression(new Token(TokenType.LeftShift, "<<"), expr, ParseAdditive());
+            if (Match(TokenType.RightShift)) expr = new BinaryExpression(new Token(TokenType.RightShift, ">>"), expr, ParseAdditive());
+            if (Match(TokenType.LogicalRightShift)) expr = new BinaryExpression(new Token(TokenType.LogicalRightShift, ">>>"), expr, ParseAdditive());
             else break;
         }
 
