@@ -107,9 +107,16 @@ public class Parser (List<Token> tokens)
 
             Token parameterName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
-            Token parameterType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра конструктора.");
+            Token paramTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра конструктора.");
+            TypeValue paramType = GetTypeValueFromToken(paramTypeToken.Type);
+            string paramStringType = paramTypeToken.Value;
+            if (Match(TokenType.LBracket))
+            {
+                Consume(TokenType.RBracket, "");
+                paramType = TypeValue.Array;
+            }
 
-            parameters.Add((parameterName.Value, parameterType.Value, GetTypeValueFromToken(parameterType.Type)));
+            parameters.Add((parameterName.Value, paramStringType, paramType));
         }
 
         IStatement body = ParseStatementOrBlock();
@@ -137,21 +144,17 @@ public class Parser (List<Token> tokens)
 
     private IStatement ParseFieldArrayDeclarationStatement(ClassInfo classInfo, string name, string typeValue, AccessModifier access, bool isStatic = false)
     {
-        Token primatyTypeToken = Peek(-2);
+        Token primaryTypeToken = Peek(-2);
         IExpression? size = null;
         if (Peek().Type != TokenType.RBracket) size = ParseExpression();
         Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'.");
 
-        List<IExpression> expressions = [];
-        if (Match(TokenType.Assign))
-        {
-            if (Match(TokenType.LBracket)) while (!Match(TokenType.RBracket)) if (!Match(TokenType.Comma)) expressions.Add(ParseExpression());
-            else expressions.Add(ParseExpression());
-        }
+        IExpression? expression = null;
+        if (Match(TokenType.Assign)) expression = ParseExpression();
 
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new FieldArrayDeclarationStatement(classInfo, name, typeValue, TypeValue.Array, GetTypeValueFromToken(primatyTypeToken.Type), access, size, expressions, isStatic);
+        return new FieldArrayDeclarationStatement(classInfo, name, typeValue, TypeValue.Array, GetTypeValueFromToken(primaryTypeToken.Type), access, size, expression, isStatic);
     }
 
     private IStatement ParseMethodDeclarationStatement(AccessModifier access, ClassInfo classInfo, bool isStatic = false)
@@ -166,7 +169,8 @@ public class Parser (List<Token> tokens)
         if (!isConstructor && Match(TokenType.Colon))
         {
             typeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления метода.");
-            returnType = GetTypeValueFromToken(typeToken.Type);
+            if (Match(TokenType.LBracket)) { Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'."); returnType = TypeValue.Array; }
+            else returnType = GetTypeValueFromToken(typeToken.Type);
         }
 
         Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
@@ -178,9 +182,16 @@ public class Parser (List<Token> tokens)
 
             Token paramName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
-            Token paramType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра метода.");
+            Token paramTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра метода.");
+            TypeValue paramType = GetTypeValueFromToken(paramTypeToken.Type);
+            string paramStringType = paramTypeToken.Value;
+            if (Match(TokenType.LBracket))
+            {
+                Consume(TokenType.RBracket, "");
+                paramType = TypeValue.Array;
+            }
 
-            parameters.Add((paramName.Value, paramType.Value, GetTypeValueFromToken(paramType.Type)));
+            parameters.Add((paramName.Value, paramStringType, paramType));
         }
 
         IStatement body = ParseStatementOrBlock();
@@ -204,7 +215,7 @@ public class Parser (List<Token> tokens)
         Token baseTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления переменной.");
         TypeValue baseType = GetTypeValueFromToken(baseTypeToken.Type);
         
-        if (Match(TokenType.LBracket)) return ParseArrayDeclarationStatement(identifierName, baseTypeToken.Value, baseType);
+        if (Match(TokenType.LBracket)) return ParseArrayDeclarationStatement(identifierName, baseTypeToken.Value);
 
         IExpression? expression = null;
         if (Match(TokenType.Assign)) expression = ParseExpression();
@@ -214,26 +225,18 @@ public class Parser (List<Token> tokens)
         return new VariableDeclarationStatement(variableStorage, classStorage, identifierName, baseTypeToken.Value, baseType, expression);
     }
 
-    private IStatement ParseArrayDeclarationStatement(string name, string baseTypeValue, TypeValue baseType)
+    private IStatement ParseArrayDeclarationStatement(string name, string baseTypeValue)
     {
         IExpression? size = null;
         if (Peek().Type != TokenType.RBracket) size = ParseExpression();
         Consume(TokenType.RBracket, "Отсутствует токен закрывающей квадратной скобки ']'.");
 
-        List<IExpression> expressions = [];
-        if (Match(TokenType.Assign))
-        {
-            if (Match(TokenType.LBracket))
-            {
-                Consume(TokenType.LBracket, $"Отсутствует токен открывающей квадратной скобки '[' ({Peek()}).");
-                while (!Match(TokenType.RBracket)) if (!Match(TokenType.Comma)) expressions.Add(ParseExpression());
-            }
-            else expressions.Add(ParseExpression());
-        }
+        IExpression? expression = null;
+        if (Match(TokenType.Assign)) expression = ParseExpression();
 
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new ArrayDeclarationStatement(variableStorage, name, size, baseTypeValue, baseType, expressions);
+        return new ArrayDeclarationStatement(variableStorage, name, size, baseTypeValue, TypeValue.Array, expression);
     }
 
     private IStatement ParseFunctionCallStatement()
@@ -424,9 +427,16 @@ public class Parser (List<Token> tokens)
 
             Token paramName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
             Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
-            Token paramType = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра функции.");
+            Token paramTypeToken = Consume(GetTypeToken().Type, "Отсутствует токен типа для объявления параметра функции.");
+            TypeValue paramType = GetTypeValueFromToken(paramTypeToken.Type);
+            string paramStringType = paramTypeToken.Value;
+            if (Match(TokenType.LBracket))
+            {
+                Consume(TokenType.RBracket, "");
+                paramType = TypeValue.Array;
+            }
 
-            parameters.Add((paramName.Value, paramType.Value, GetTypeValueFromToken(paramType.Type)));
+            parameters.Add((paramName.Value, paramStringType, paramType));
         }
 
         IStatement body = ParseStatementOrBlock();
@@ -663,6 +673,18 @@ public class Parser (List<Token> tokens)
             IExpression expression = new NewClassExpression(classStorage, instanceNameToken.Value, args);
             expression = ParseFieldChain(expression);
             return expression;
+        }
+
+        if (Match(TokenType.LBracket))
+        {
+            List<IExpression> expressions = [];
+            while (!Match(TokenType.RBracket))
+            {
+                expressions.Add(ParseExpression());
+                if (Peek().Type != TokenType.RBracket) Consume(TokenType.Comma, "Отсутствует токен перечисления элементов инициализатора массива ','.");
+            }
+
+            return new ArrayDeclarationExpression(expressions);
         }
 
         if (Match(TokenType.This))

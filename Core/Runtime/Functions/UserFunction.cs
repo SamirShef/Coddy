@@ -23,6 +23,8 @@ public class UserFunction(string name, string returnTypeValue, TypeValue returnT
     {
         if (args.Length != parameters.Count) throw new Exception($"Функция '{Name}()' ожидала {parameters.Count} аргументов, а получила {args.Length}.");
 
+        Console.WriteLine($"{ReturnTypeValue} : {ReturnType}");
+
         variableStorage.EnterScope();
         try
         {

@@ -7,9 +7,3 @@ static class file {
 	public static func readAllText : string(filePath : string) { return CoddyFile.ReadAllText(filePath); }
 	public static func writeAllText(filePath : string, source : string) { CoddyFile.WriteAllText(filePath, source); }
 }
-
-static class random {
-	public static func range : int(start : int, end : int) {
-		return -1;
-	}
-}

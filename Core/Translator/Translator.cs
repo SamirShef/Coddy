@@ -282,21 +282,37 @@ public class Translator()
 
         string sizeString = fads.Size != null ? TranslateExpression(fads.Size) : "";
 
-        builder.Append($"{fads.Access.ToString().ToLower()} {typeString}[] {fads.Name} = new {typeString}[{sizeString}] " + "{ ");
-
-        if (fads.Expressions.Count > 0)
+        string expression = "";
+        if (fads.Expression != null)
         {
-            string[] expressions = new string[fads.Expressions.Count];
-            for (int i = 0; i < expressions.Length; i++) expressions[i] = TranslateExpression(fads.Expressions[i]);
-            builder.Append(string.Join(", ", expressions));
+            if (fads.Expression is ArrayDeclarationExpression arrayDeclarationExpression) expression = TranslateArrayDeclarationExpression(arrayDeclarationExpression, sizeString);
+            else expression = TranslateExpression(fads.Expression);
+        }
+        else
+        {
+            StringBuilder initBuilder = new();
+            initBuilder.Append($"new {typeString}[{sizeString}] {{ ");
+            int size = fads.Size != null ? ((IntValue)fads.Size.Evaluate()).AsInt() : 0;
+            string[] expressions = new string[size];
+            for (int i = 0; i < expressions.Length; i++) expressions[i] = GetDefaultValueByStringTypeValue(fads.TypeValue);
+
+            initBuilder.Append(string.Join(", ", expressions));
+            initBuilder.Append(" }");
+
+            expression = initBuilder.ToString();
         }
 
-        builder.Append(" };");
+        builder.Append($"{fads.Access.ToString().ToLower()} {typeString}[] {fads.Name} = {expression};");
 
         return builder.ToString();
     }
 
-    private static string TranslateFieldAssignmentStatement(FieldAssignmentStatement fas) => $"{TranslateExpression(fas.TargetExpression)}.{fas.Name} {fas.OpToken.Value} {TranslateExpression(fas.Expression)};";
+    private static string TranslateFieldAssignmentStatement(FieldAssignmentStatement fas)
+    {
+        string thisContext = "";
+        if (TranslateExpression(fas.Start) != "this") thisContext = $"{TranslateExpression(fas.TargetExpression)}.";
+        return $"{thisContext}{fas.Name} {fas.OpToken.Value} {TranslateExpression(fas.Expression)};";
+    }
 
     private static string TranslateMethodDeclarationStatement(MethodDeclarationStatement mds)
     {
@@ -306,7 +322,13 @@ public class Translator()
         bool isStatic = mds.IsStatic;
         string isStaticString = isStatic ? "static" : "";
         string methodName = EscapeCSharpKeyword(mds.MethodName);
-        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {mds.Method.ReturnType.ToString().ToLower()} {methodName}({string.Join(", ", parameters)}) {{");
+
+        TypeValue type = mds.Method.ReturnType;
+        string returnTypeString = type.ToString().ToLower();
+        if (type == TypeValue.Class) returnTypeString = mds.Method.ReturnTypeValue;
+        else if (type == TypeValue.Array) returnTypeString = $"{mds.Method.ReturnTypeValue}[]";
+        
+        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {returnTypeString} {methodName}({string.Join(", ", parameters)}) {{");
         IStatement body = mds.Method.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -350,21 +372,31 @@ public class Translator()
     {
         StringBuilder builder = new();
 
-        TypeValue type = ads.Type;
-        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : ads.TypeValue;
+        string typeString = ads.TypeValue.ToString();
 
         string sizeString = ads.Size != null ? TranslateExpression(ads.Size) : "";
 
-        builder.Append($"{typeString}[] {ads.Name} = new {typeString}[{sizeString}] " + "{ ");
-        if (ads.Expressions.Count > 0)
+        string expression = "";
+        if (ads.Expression != null)
         {
-            string[] expressions = new string[ads.Expressions.Count];
-            for (int i = 0; i < expressions.Length; i++) expressions[i] = TranslateExpression(ads.Expressions[i]);
+            if (ads.Expression is ArrayDeclarationExpression arrayDeclarationExpression) expression = TranslateArrayDeclarationExpression(arrayDeclarationExpression, sizeString);
+            else expression = TranslateExpression(ads.Expression);
+        }
+        else
+        {
+            StringBuilder initBuilder = new();
+            initBuilder.Append($"new {typeString}[{sizeString}] {{ ");
+            int size = ads.Size != null ? ((IntValue)ads.Size.Evaluate()).AsInt() : 0;
+            string[] expressions = new string[size];
+            for (int i = 0; i < expressions.Length; i++) expressions[i] = GetDefaultValueByStringTypeValue(ads.TypeValue);
 
-            builder.Append(string.Join(", ", expressions));
+            initBuilder.Append(string.Join(", ", expressions));
+            initBuilder.Append(" }");
+
+            expression = initBuilder.ToString();
         }
 
-        builder.Append(" };");
+        builder.Append($"{typeString}[] {ads.Name} = {expression};");
 
         return builder.ToString();
     }
@@ -438,7 +470,9 @@ public class Translator()
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(fds.UserFunction.Parameters[i]);
         
         TypeValue type = fds.UserFunction.ReturnType;
-        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : fds.UserFunction.ReturnTypeValue;
+        string typeString = type.ToString().ToLower();
+        if (type == TypeValue.Class) typeString = fds.UserFunction.ReturnTypeValue;
+        else if (type == TypeValue.Array) typeString = $"{fds.UserFunction.ReturnTypeValue}[]";
 
         builder.AppendLine($"public static {typeString} {fds.Name} ({string.Join(", ", parameters)}) {{");
         
@@ -453,8 +487,11 @@ public class Translator()
 
     private static string TranslateFunctionParameter((string name, string typeValue, TypeValue type) parameter)
     {
-        string typeString = parameter.type != TypeValue.Class ? parameter.type.ToString().ToLower() : EscapeCSharpKeyword(parameter.typeValue);
-        return $"{typeString} {EscapeCSharpKeyword(parameter.name)}";
+        string typeString = parameter.type.ToString().ToLower();
+        if (parameter.type == TypeValue.Class) typeString = parameter.typeValue;
+        else typeString = $"{parameter.typeValue}[]";
+
+        return $"{typeString} {parameter.name}";
     }
 
     private static string TranslateFunctionCallStatement(FunctionCallStatement fcs)
@@ -490,6 +527,7 @@ public class Translator()
         VariableExpression ve => ve.Name,
         ArrayExpression ae => TranslateArrayExpression(ae),
         ArrayFieldExpression afe => TranslateArrayFieldExpression(afe),
+        ArrayDeclarationExpression ade => TranslateArrayDeclarationExpression(ade),
         UnaryExpression ue => TranslateUnaryExpression(ue),
         BinaryExpression be => TranslateBinaryExpression(be),
         TernaryExpression te => TranslateTernaryExpression(te),
@@ -513,6 +551,19 @@ public class Translator()
     private static string TranslateArrayExpression(ArrayExpression ae) => $"{ae.Name}[{TranslateExpression(ae.Index)}]";
 
     private static string TranslateArrayFieldExpression(ArrayFieldExpression afe) => $"{TranslateExpression(afe.Target)}.{afe.Name}[{TranslateExpression(afe.Index)}]";
+
+    private static string TranslateArrayDeclarationExpression(ArrayDeclarationExpression ade, string? sizeString = null)
+    {
+        TypeValue elementsType = ade.ElementsType;
+        string elementsTypeString = elementsType != TypeValue.Class ? ade.ElementsType.ToString().ToLower() : ade.ElementsTypeValue;
+
+        string size = sizeString ?? "";
+
+        string[] elements = new string[ade.Expressions.Count];
+        for (int i = 0; i < elements.Length; i++) elements[i] = TranslateExpression(ade.Expressions[i]);
+
+        return $"new {elementsTypeString}[{size}] {{ {string.Join(", ", elements)} }}";
+    }
 
     private static string TranslateUnaryExpression(UnaryExpression ue) => $"{ue.Op.Value}{TranslateExpression(ue.Expression)}";
 
@@ -582,6 +633,20 @@ public class Translator()
             TypeValue.Decimal => "0m",
             TypeValue.String => "\"\"",
             TypeValue.Bool => "false",
+            _ => throw new Exception($"Невозможно указать стандартное значение типу {type}")
+        };
+    }
+
+    private static string GetDefaultValueByStringTypeValue(string type)
+    {
+        return type switch
+        {
+            "int" => "0",
+            "float" => "0f",
+            "double" => "0d",
+            "decimal" => "0m",
+            "string" => "\"\"",
+            "boolean" => "false",
             _ => throw new Exception($"Невозможно указать стандартное значение типу {type}")
         };
     }
