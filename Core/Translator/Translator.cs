@@ -10,10 +10,13 @@ namespace Core.Translator;
 /// <summary>
 /// Class to translate Coddy code to C# code
 /// </summary>
-public class Translator()
+public class Translator
 {
+    private static ImportManager? importManager;
+
     public static string Translate(List<IStatement> statements)
     {
+        importManager = new ImportManager(new Translator());
         List<IStatement> statementsInMain = [];
         List<IStatement> statementsInGlobalClass = [];
 
@@ -28,31 +31,51 @@ public class Translator()
         builder.AppendLine("using System;");
         builder.AppendLine("using IDE.Runtime;");
         builder.AppendLine();
+
+        foreach (IStatement statement in statementsInGlobalClass)
+        {
+            if (statement is IncludeStatement includeStatement)
+            {
+                string importCode = importManager.ProcessImport(includeStatement);
+                if (!string.IsNullOrEmpty(importCode))
+                {
+                    builder.AppendLine(importCode);
+                }
+            }
+        }
+
         builder.AppendLine("public class Program {");
         builder.AppendLine("public static void __Main__() {");
         foreach (IStatement statement in statementsInMain) builder.AppendLine($"{TranslateCodePart(statement)}");
         builder.AppendLine("}");
-        foreach (IStatement statement in statementsInGlobalClass) builder.AppendLine($"{TranslateCodePart(statement)}");
+
+        foreach (IStatement statement in statementsInGlobalClass) 
+        {
+            if (statement is not IncludeStatement) builder.AppendLine($"{TranslateCodePart(statement)}");
+        }
+
         builder.AppendLine("}");
         
+        importManager.Clear();
         return builder.ToString();
     }
 
     private static bool CodePartInGlobal(IStatement statement) => statement switch
     {
-        IncludeStatement or ClassDeclarationStatement or FunctionDeclarationStatement => true,
+        IncludeStatement or ClassDeclarationStatement or FunctionDeclarationStatement or EnumDeclarationStatement => true,
         _ => false
     };
 
     private static string TranslateCodePart(IStatement statement) => statement switch
     {
-        IncludeStatement ins => TranslateIncludeStatement(ins),
+        /*IncludeStatement ins => importManager?.ProcessImport(ins) ?? string.Empty,*/
         ClassDeclarationStatement cds => TranslateClassDeclarationStatement(cds),
         FieldDeclarationStatement fds => TranslateFieldDeclarationStatement(fds),
         FieldArrayDeclarationStatement fads => TranslateFieldArrayDeclarationStatement(fads),
         FieldAssignmentStatement fas => TranslateFieldAssignmentStatement(fas),
         MethodDeclarationStatement mds => TranslateMethodDeclarationStatement(mds),
         MethodCallStatement mcs => TranslateMethodCallStatement(mcs),
+        ClassEnumDeclarationStatement cecs => TranslateClassEnumDeclarationStatement(cecs),
         ConstructorDeclarationStatement cds => TranslateConstructorDeclarationStatement(cds),
         VariableDeclarationStatement vds => TranslateVariableDeclarationStatement(vds),
         ArrayDeclarationStatement ads => TranslateArrayDeclarationStatement(ads),
@@ -64,13 +87,14 @@ public class Translator()
         ForLoopStatement fls => TranslateForStatement(fls),
         FunctionDeclarationStatement fds => TranslateFunctionDeclarationStatement(fds),
         FunctionCallStatement fcs => TranslateFunctionCallStatement(fcs),
+        EnumDeclarationStatement eds => TranslateEnumDeclarationStatement(eds),
         ReturnStatement rs => TranslateReturnStatement(rs),
         BreakStatement => "break;",
         ContinueStatement => "continue;",
         _ => throw new Exception($"Невозможно обработать данный тип команды ({statement}).")
     };
 
-    private static string TranslateIncludeStatement(IncludeStatement ins)
+    public string TranslateIncludeStatement(IncludeStatement ins)
     {
         static string GetProjectRootPath()
         {
@@ -101,8 +125,18 @@ public class Translator()
         StringBuilder builder = new();
         foreach (IStatement statement in statements)
         {
-            if (statement is IncludeStatement includeStatement) builder.AppendLine(TranslateIncludeStatement(includeStatement));
-            if (statement is ClassDeclarationStatement classDeclaration) builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
+            if (statement is IncludeStatement includeStatement)
+            {
+                string importCode = importManager?.ProcessImport(includeStatement) ?? string.Empty;
+                if (!string.IsNullOrEmpty(importCode))
+                {
+                    builder.AppendLine(importCode);
+                }
+            }
+            else if (statement is ClassDeclarationStatement classDeclaration)
+            {
+                builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
+            }
         }
 
         return builder.ToString();
@@ -259,12 +293,11 @@ public class Translator()
     private static string TranslateFieldDeclarationStatement(FieldDeclarationStatement fds)
     {
         StringBuilder builder = new();
-        TypeValue type = fds.Type;
-        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : EscapeCSharpKeyword(fds.TypeValue);
+
         bool isStatic = fds.IsStatic;
         string isStaticString = isStatic ? "static" : "";
         string fieldName = EscapeCSharpKeyword(fds.Name);
-        builder.Append($"{fds.Access.ToString().ToLower()} {isStaticString} {typeString} {fieldName}");
+        builder.Append($"{fds.Access.ToString().ToLower()} {isStaticString} {string.Join(".", fds.TypeExpressions)} {fieldName}");
         if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
         builder.Append(';');
 
@@ -275,26 +308,23 @@ public class Translator()
     {
         StringBuilder builder = new();
 
-        TypeValue type = fads.Type;
-        string typeString = type.ToString().ToLower();
-        if (type == TypeValue.Class) typeString = fads.TypeValue;
-        if (type == TypeValue.Array) typeString = fads.PrimaryType.ToString().ToLower();
+        string isStaticString = fads.IsStatic ? "static " : "";
 
         string sizeString = fads.Size != null ? TranslateExpression(fads.Size) : "";
 
         string expression = "";
         if (fads.Expression != null)
         {
-            if (fads.Expression is ArrayDeclarationExpression arrayDeclarationExpression) expression = TranslateArrayDeclarationExpression(arrayDeclarationExpression, sizeString);
+            if (fads.Expression is ArrayDeclarationExpression arrayDeclarationExpression) expression = TranslateArrayDeclarationExpression(arrayDeclarationExpression, string.Join(".", fads.TypeExpressions), sizeString);
             else expression = TranslateExpression(fads.Expression);
         }
         else
         {
             StringBuilder initBuilder = new();
-            initBuilder.Append($"new {typeString}[{sizeString}] {{ ");
-            int size = fads.Size != null ? ((IntValue)fads.Size.Evaluate()).AsInt() : 0;
+            initBuilder.Append($"new {string.Join(".", fads.TypeExpressions)}[{sizeString}] {{ ");
+            int size = fads.Size != null ? int.Parse(TranslateExpression(fads.Size)) : 0;
             string[] expressions = new string[size];
-            for (int i = 0; i < expressions.Length; i++) expressions[i] = GetDefaultValueByStringTypeValue(fads.TypeValue);
+            for (int i = 0; i < expressions.Length; i++) expressions[i] = GetDefaultValueByStringTypeValue(fads.TypeExpressions[^1]);
 
             initBuilder.Append(string.Join(", ", expressions));
             initBuilder.Append(" }");
@@ -302,7 +332,7 @@ public class Translator()
             expression = initBuilder.ToString();
         }
 
-        builder.Append($"{fads.Access.ToString().ToLower()} {typeString}[] {fads.Name} = {expression};");
+        builder.Append($"{fads.Access.ToString().ToLower()} {isStaticString}{string.Join(".", fads.TypeExpressions)}[] {fads.Name} = {expression};");
 
         return builder.ToString();
     }
@@ -322,13 +352,8 @@ public class Translator()
         bool isStatic = mds.IsStatic;
         string isStaticString = isStatic ? "static" : "";
         string methodName = EscapeCSharpKeyword(mds.MethodName);
-
-        TypeValue type = mds.Method.ReturnType;
-        string returnTypeString = type.ToString().ToLower();
-        if (type == TypeValue.Class) returnTypeString = mds.Method.ReturnTypeValue;
-        else if (type == TypeValue.Array) returnTypeString = $"{mds.Method.ReturnTypeValue}[]";
         
-        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {returnTypeString} {methodName}({string.Join(", ", parameters)}) {{");
+        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {mds.Method.ReturnType} {methodName}({string.Join(", ", parameters)}) {{");
         IStatement body = mds.Method.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -338,6 +363,25 @@ public class Translator()
     }
 
     private static string TranslateMethodCallStatement(MethodCallStatement mcs) => $"{TranslateExpression(mcs.Expression)};";
+
+    private static string TranslateClassEnumDeclarationStatement(ClassEnumDeclarationStatement ceds)
+    {
+        StringBuilder builder = new();
+        string[] members = new string[ceds.Members.Count];
+        for (int i = 0; i < members.Length; i++)
+        {
+            string memberName = ceds.Members[i].Name;
+            string value = "";
+            if (ceds.Members[i].Expression != null) value = $" = {TranslateExpression(ceds.Members[i].Expression!)}";
+            members[i] = $"{memberName}{value}";
+        }
+
+        builder.AppendLine($"{ceds.Access.ToString().ToLower()} enum {ceds.Name} {{");
+        builder.AppendLine(string.Join(", ", members));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
 
     private static string TranslateConstructorDeclarationStatement(ConstructorDeclarationStatement cds)
     {
@@ -357,12 +401,9 @@ public class Translator()
     {
         StringBuilder builder = new();
         
-        TypeValue type = vds.Type;
-        string typeString = type != TypeValue.Class ? type.ToString().ToLower() : vds.TypeValue;
-        
-        builder.Append($"{typeString} {vds.Name} = ");
+        builder.Append($"{string.Join(".", vds.TypeExpressions)} {vds.Name} = ");
         if (vds.Expression != null) builder.Append($"{TranslateExpression(vds.Expression)}");
-        else builder.Append(GetDefaultValueByTypeValue(type));
+        else builder.Append(GetDefaultValueByStringTypeValue(vds.TypeExpressions[^1]));
         builder.Append(';');
         
         return builder.ToString();
@@ -372,23 +413,21 @@ public class Translator()
     {
         StringBuilder builder = new();
 
-        string typeString = ads.TypeValue.ToString();
-
         string sizeString = ads.Size != null ? TranslateExpression(ads.Size) : "";
 
         string expression = "";
         if (ads.Expression != null)
         {
-            if (ads.Expression is ArrayDeclarationExpression arrayDeclarationExpression) expression = TranslateArrayDeclarationExpression(arrayDeclarationExpression, sizeString);
+            if (ads.Expression is ArrayDeclarationExpression arrayDeclarationExpression) expression = TranslateArrayDeclarationExpression(arrayDeclarationExpression, string.Join(".", ads.TypeExpressions), sizeString);
             else expression = TranslateExpression(ads.Expression);
         }
         else
         {
             StringBuilder initBuilder = new();
-            initBuilder.Append($"new {typeString}[{sizeString}] {{ ");
-            int size = ads.Size != null ? ((IntValue)ads.Size.Evaluate()).AsInt() : 0;
+            initBuilder.Append($"new {string.Join(".", ads.TypeExpressions)}[{sizeString}] {{ ");
+            int size = ads.Size != null ? int.Parse(TranslateExpression(ads.Size)) : 0;
             string[] expressions = new string[size];
-            for (int i = 0; i < expressions.Length; i++) expressions[i] = GetDefaultValueByStringTypeValue(ads.TypeValue);
+            for (int i = 0; i < expressions.Length; i++) expressions[i] = GetDefaultValueByStringTypeValue(ads.TypeExpressions[^1]);
 
             initBuilder.Append(string.Join(", ", expressions));
             initBuilder.Append(" }");
@@ -396,7 +435,7 @@ public class Translator()
             expression = initBuilder.ToString();
         }
 
-        builder.Append($"{typeString}[] {ads.Name} = {expression};");
+        builder.Append($"{string.Join(".", ads.TypeExpressions)}[] {ads.Name} = {expression};");
 
         return builder.ToString();
     }
@@ -453,7 +492,7 @@ public class Translator()
     private static string TranslateForStatement(ForLoopStatement fls)
     {
         StringBuilder builder = new();
-        builder.AppendLine($"for ({TranslateCodePart(fls.IndexatorDeclaration)} {TranslateExpression(fls.Condition)}; {TranslateCodePart(fls.Iterator).TrimEnd(';')}) {{");
+        builder.AppendLine($"for ({TranslateCodePart(fls.IndexerDeclaration)} {TranslateExpression(fls.Condition)}; {TranslateCodePart(fls.Iterator).TrimEnd(';')}) {{");
         IStatement block = fls.Block;
         if (block is not BlockStatement bs) builder.Append(TranslateCodePart(block));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -468,13 +507,8 @@ public class Translator()
         
         string[] parameters = new string[fds.UserFunction.Parameters.Count];
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(fds.UserFunction.Parameters[i]);
-        
-        TypeValue type = fds.UserFunction.ReturnType;
-        string typeString = type.ToString().ToLower();
-        if (type == TypeValue.Class) typeString = fds.UserFunction.ReturnTypeValue;
-        else if (type == TypeValue.Array) typeString = $"{fds.UserFunction.ReturnTypeValue}[]";
 
-        builder.AppendLine($"public static {typeString} {fds.Name} ({string.Join(", ", parameters)}) {{");
+        builder.AppendLine($"public static {fds.UserFunction.ReturnType} {fds.Name} ({string.Join(", ", parameters)}) {{");
         
         IStatement body = fds.UserFunction.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
@@ -485,14 +519,7 @@ public class Translator()
         return builder.ToString();
     }
 
-    private static string TranslateFunctionParameter((string name, string typeValue, TypeValue type) parameter)
-    {
-        string typeString = parameter.type.ToString().ToLower();
-        if (parameter.type == TypeValue.Class) typeString = parameter.typeValue;
-        else typeString = $"{parameter.typeValue}[]";
-
-        return $"{typeString} {parameter.name}";
-    }
+    private static string TranslateFunctionParameter((string name, string typeExpression) parameter) => $"{parameter.typeExpression} {parameter.name}";
 
     private static string TranslateFunctionCallStatement(FunctionCallStatement fcs)
     {
@@ -513,6 +540,26 @@ public class Translator()
             "type" => $"RuntimeHelper.GetType({string.Join(", ", args)});",
             _ => $"{fcs.Name}({string.Join(", ", args)});"
         };
+    }
+
+    private static string TranslateEnumDeclarationStatement(EnumDeclarationStatement eds)
+    {
+        string name = eds.Name;
+        string[] members = new string[eds.Members.Count];
+        for (int i = 0; i < members.Length; i++)
+        {
+            string memberName = eds.Members[i].Name;
+            string value = "";
+            if (eds.Members[i].Expression != null) value = $" = {TranslateExpression(eds.Members[i].Expression!)}";
+            members[i] = $"{memberName}{value}";
+        }
+
+        StringBuilder builder = new();
+        builder.AppendLine($"public enum {name} {{");
+        builder.AppendLine(string.Join(", ", members));
+        builder.AppendLine("}");
+
+        return builder.ToString();
     }
 
     private static string TranslateReturnStatement(ReturnStatement rs)
@@ -552,17 +599,14 @@ public class Translator()
 
     private static string TranslateArrayFieldExpression(ArrayFieldExpression afe) => $"{TranslateExpression(afe.Target)}.{afe.Name}[{TranslateExpression(afe.Index)}]";
 
-    private static string TranslateArrayDeclarationExpression(ArrayDeclarationExpression ade, string? sizeString = null)
+    private static string TranslateArrayDeclarationExpression(ArrayDeclarationExpression ade, string? typeString = null, string? sizeString = null)
     {
-        TypeValue elementsType = ade.ElementsType;
-        string elementsTypeString = elementsType != TypeValue.Class ? ade.ElementsType.ToString().ToLower() : ade.ElementsTypeValue;
-
         string size = sizeString ?? "";
 
         string[] elements = new string[ade.Expressions.Count];
         for (int i = 0; i < elements.Length; i++) elements[i] = TranslateExpression(ade.Expressions[i]);
 
-        return $"new {elementsTypeString}[{size}] {{ {string.Join(", ", elements)} }}";
+        return $"new {typeString!}[{size}] {{ {string.Join(", ", elements)} }}";
     }
 
     private static string TranslateUnaryExpression(UnaryExpression ue) => $"{ue.Op.Value}{TranslateExpression(ue.Expression)}";
@@ -623,20 +667,6 @@ public class Translator()
         _ => throw new Exception($"Невозможно определить суффикс нечислового типа '{type}'")
     };
 
-    private static string GetDefaultValueByTypeValue(TypeValue type)
-    {
-        return type switch
-        {
-            TypeValue.Int => "0",
-            TypeValue.Float => "0f",
-            TypeValue.Double => "0d",
-            TypeValue.Decimal => "0m",
-            TypeValue.String => "\"\"",
-            TypeValue.Bool => "false",
-            _ => throw new Exception($"Невозможно указать стандартное значение типу {type}")
-        };
-    }
-
     private static string GetDefaultValueByStringTypeValue(string type)
     {
         return type switch
@@ -646,7 +676,7 @@ public class Translator()
             "double" => "0d",
             "decimal" => "0m",
             "string" => "\"\"",
-            "boolean" => "false",
+            "bool" => "false",
             _ => throw new Exception($"Невозможно указать стандартное значение типу {type}")
         };
     }

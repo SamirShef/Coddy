@@ -1,10 +1,9 @@
 ﻿namespace Core.Values;
 
-public class ArrayValue(IValue[] value, TypeValue elementsType) : IValue
+public class ArrayValue(IValue[] value) : IValue
 {
     public object Value { get; set; } = value;
     public TypeValue Type => TypeValue.Array;
-    public TypeValue ElementsType => elementsType;
 
     public IValue Add(IValue other)
     {

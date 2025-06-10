@@ -6,7 +6,7 @@ public class ClassInstance(ClassInfo classInfo)
 {
     public ClassInfo ClassInfo { get; } = classInfo;
 
-    public IValue GetFieldValue(string name, bool isThisContext = false)
+    /*public IValue GetFieldValue(string name, bool isThisContext = false)
     {
         if (!classInfo.Fields.TryGetValue(name, out FieldInfo? fieldInfo)) throw new Exception($"Невозможно получить значение поля: поле с именем '{name}' в классе '{classInfo.Name}' не объявлено.");
         if (!isThisContext && fieldInfo.Access == AccessModifier.Private) throw new Exception($"Невозможно получить значение поля: поле с именем '{name}' в классе '{classInfo.Name}' помечено как защищенное.");
@@ -55,5 +55,5 @@ public class ClassInstance(ClassInfo classInfo)
         if (methodInfo.Access == AccessModifier.Private && !isThisContext) throw new Exception($"Метод '{name}' является приватным и недоступен извне класса '{ClassInfo.Name}'.");
 
         return methodInfo;
-    }
+    }*/
 }

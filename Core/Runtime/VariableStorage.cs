@@ -1,4 +1,4 @@
-﻿using Core.Values;
+﻿/*using Core.Values;
 
 namespace Core.Runtime;
 
@@ -56,4 +56,4 @@ public class VariableInfo (TypeValue type, IValue value)
 {
     public TypeValue Type { get; set; } = type;
     public IValue Value { get; set; } = value;
-}
+}*/

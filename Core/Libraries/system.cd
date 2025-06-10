@@ -1,7 +1,7 @@
 include "DllImports/file.dll";
 include "math.cd";
 
-static class file {
+static class File {
 	public static func delete(filePath : string) { CoddyFile.Delete(filePath); }
 	public static func exists : boolean(filePath : string) { return CoddyFile.Exists(filePath); }
 	public static func readAllText : string(filePath : string) { return CoddyFile.ReadAllText(filePath); }

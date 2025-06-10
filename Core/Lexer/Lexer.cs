@@ -11,12 +11,12 @@ public class Lexer (string source)
     {
         { "class", TokenType.Class },
         { "let", TokenType.Let },
-        { "int", TokenType.Int },
+        /*{ "int", TokenType.Int },
         { "float", TokenType.Float },
         { "double", TokenType.Double },
         { "decimal", TokenType.Decimal },
         { "string", TokenType.String },
-        { "boolean", TokenType.Bool },
+        { "boolean", TokenType.Bool },*/
         { "func", TokenType.Func },
         { "if", TokenType.If },
         { "else", TokenType.Else },
@@ -33,6 +33,7 @@ public class Lexer (string source)
         { "constructor", TokenType.Constructor },
         { "static", TokenType.Static },
         { "include", TokenType.Include },
+        { "enum", TokenType.Enum },
     };
 
     public IEnumerable<Token> Tokenize()

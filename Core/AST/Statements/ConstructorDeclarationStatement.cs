@@ -7,6 +7,4 @@ public class ConstructorDeclarationStatement(ClassInfo classInfo, UserFunction c
 {
     public ClassInfo ClassInfo { get; } = classInfo;
     public UserFunction Constructor { get; } = constructor;
-
-    public void Execute() => ClassInfo.SetConstructor(Constructor);
 } 

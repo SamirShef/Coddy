@@ -1,10 +1,6 @@
-﻿using Core.Runtime;
-using Core.Values;
+﻿namespace Core.Expressions;
 
-namespace Core.Expressions;
-
-public class VariableExpression(VariableStorage storage, string name) : IExpression
+public class VariableExpression(string name) : IExpression
 {
     public string Name { get; } = name;
-    public IValue Evaluate() => storage.Get(Name).Value;
 }

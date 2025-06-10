@@ -1,4 +1,4 @@
-static class math {
+static class Math {
 	public static let pi : double = 3.14159265358979323846d;
 	public static let e : double = 2.71828182845904523536d;
 
@@ -9,7 +9,7 @@ static class math {
 		let sqrt : int = 0;
 
 		for (i : int : i < num : i++) {
-			if (math.pow(i + 1, 2) > num) {
+			if (Math.pow(i + 1, 2) > num) {
 				sqrt = i;
 				break;
 			}
@@ -226,6 +226,6 @@ static class math {
 	}
 
 	public static func clamp : int(value : int, min : int, max : int) {
-		return math.max(math.min(value, max), min);
+		return Math.max(Math.min(value, max), min);
 	}
 }

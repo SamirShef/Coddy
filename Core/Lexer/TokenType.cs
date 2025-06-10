@@ -6,7 +6,7 @@ public enum TokenType
 
     Class, Let, Func, If, Else, While, Do, For, Break, Continue, Return, Include,
 
-    Private, Public, New, This, Constructor, Static,
+    Private, Public, New, This, Constructor, Static, Enum,
 
     Int, Float, Double, Decimal, Bool, String,
     IntLiteral, FloatLiteral, DoubleLiteral, DecimalLiteral, StringLiteral, BooleanLiteral,

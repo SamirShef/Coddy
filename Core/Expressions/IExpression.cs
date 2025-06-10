@@ -2,7 +2,4 @@
 
 namespace Core.Expressions;
 
-public interface IExpression
-{
-    IValue Evaluate();
-}
+public interface IExpression { }
