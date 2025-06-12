@@ -9,7 +9,7 @@ public class ImportManager(Translator translator)
 
     public string ProcessImport(IncludeStatement includeStatement)
     {
-        string libraryPath = includeStatement.LibraryPath;
+        string libraryPath = Translator.TranslateExpression(includeStatement.LibraryPathExpression);
         
         if (importedLibraries.Contains(libraryPath)) return string.Empty;
 

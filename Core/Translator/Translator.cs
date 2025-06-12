@@ -3,7 +3,6 @@ using Core.Expressions;
 using Core.Values;
 using System.Text;
 using System.Reflection;
-using System.Collections.Generic;
 
 namespace Core.Translator;
 
@@ -62,20 +61,21 @@ public class Translator
 
     private static bool CodePartInGlobal(IStatement statement) => statement switch
     {
-        IncludeStatement or ClassDeclarationStatement or FunctionDeclarationStatement or EnumDeclarationStatement => true,
+        IncludeStatement or UseStatement or ClassDeclarationStatement or FunctionDeclarationStatement or EnumDeclarationStatement or InterfaceDeclarationStatement => true,
         _ => false
     };
 
     private static string TranslateCodePart(IStatement statement) => statement switch
     {
-        /*IncludeStatement ins => importManager?.ProcessImport(ins) ?? string.Empty,*/
+        UseStatement us => TranslateUseStatement(us),
         ClassDeclarationStatement cds => TranslateClassDeclarationStatement(cds),
         FieldDeclarationStatement fds => TranslateFieldDeclarationStatement(fds),
         FieldArrayDeclarationStatement fads => TranslateFieldArrayDeclarationStatement(fads),
         FieldAssignmentStatement fas => TranslateFieldAssignmentStatement(fas),
         MethodDeclarationStatement mds => TranslateMethodDeclarationStatement(mds),
         MethodCallStatement mcs => TranslateMethodCallStatement(mcs),
-        ClassEnumDeclarationStatement cecs => TranslateClassEnumDeclarationStatement(cecs),
+        ClassEnumDeclarationStatement ceds => TranslateClassEnumDeclarationStatement(ceds),
+        ClassInterfaceDeclarationStatement cids => TranslateClassInterfaceDeclarationStatement(cids),
         ConstructorDeclarationStatement cds => TranslateConstructorDeclarationStatement(cds),
         VariableDeclarationStatement vds => TranslateVariableDeclarationStatement(vds),
         ArrayDeclarationStatement ads => TranslateArrayDeclarationStatement(ads),
@@ -88,6 +88,7 @@ public class Translator
         FunctionDeclarationStatement fds => TranslateFunctionDeclarationStatement(fds),
         FunctionCallStatement fcs => TranslateFunctionCallStatement(fcs),
         EnumDeclarationStatement eds => TranslateEnumDeclarationStatement(eds),
+        InterfaceDeclarationStatement ids => TranslateInterfaceDeclarationStatement(ids),
         ReturnStatement rs => TranslateReturnStatement(rs),
         BreakStatement => "break;",
         ContinueStatement => "continue;",
@@ -102,8 +103,9 @@ public class Translator
             return Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", ".."));
         }
 
-        string fullPath = Path.Combine(GetProjectRootPath(), "Core", "Libraries", ins.LibraryPath);
-        if (!File.Exists(fullPath)) throw new Exception($"Библиотека не найдена: {fullPath}");
+        string fullPath = Path.Combine(GetProjectRootPath(), "Core", "Libraries", TranslateExpression(ins.LibraryPathExpression).TrimEnd('\"').TrimStart('\"'));
+
+        if (!File.Exists(fullPath)) throw new Exception($"Библиотека по пути {fullPath} не найдена.");
 
         string extension = Path.GetExtension(fullPath).ToLower();
         return extension switch
@@ -111,7 +113,7 @@ public class Translator
             ".cd" => TranslateCoddyLibrary(fullPath),
             ".dll" => TranslateDLLLibrary(fullPath),
             ".cs" => TranslateCSharpLibrary(fullPath),
-            _ => throw new Exception($"Файл с расширением '{extension}' не является поддерживаемым библиотечным файлом. Поддерживаемые расширения: .cd, .dll, .cs"),
+            _ => throw new Exception($"Файл с расширением '{extension}' не является поддерживаемым библиотечным файлом. Поддерживаемые расширения: .cd, .dll, .cs."),
         };
     }
 
@@ -128,15 +130,10 @@ public class Translator
             if (statement is IncludeStatement includeStatement)
             {
                 string importCode = importManager?.ProcessImport(includeStatement) ?? string.Empty;
-                if (!string.IsNullOrEmpty(importCode))
-                {
-                    builder.AppendLine(importCode);
-                }
+                if (!string.IsNullOrEmpty(importCode)) builder.AppendLine(importCode);
             }
-            else if (statement is ClassDeclarationStatement classDeclaration)
-            {
-                builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
-            }
+            else if (statement is ClassDeclarationStatement classDeclaration) builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
+            else if (statement is EnumDeclarationStatement enumDeclaration) builder.AppendLine(TranslateEnumDeclarationStatement(enumDeclaration));
         }
 
         return builder.ToString();
@@ -277,13 +274,26 @@ public class Translator
         };
     }
 
+    private static string TranslateUseStatement(UseStatement us)
+    {
+        string filePath = TranslateExpression(us.FilePathExpression).TrimEnd('\"').TrimStart('\"');
+
+        if (!File.Exists(filePath)) throw new Exception($"Файл по пути {filePath} не существует.");
+
+        if (Path.GetExtension(filePath).ToLower() != ".cd") throw new Exception($"Расширение {Path.GetExtension(filePath).ToLower()} файла по пути {filePath} не поддерживается.");
+
+        return TranslateCoddyLibrary(filePath);
+    }
+
     private static string TranslateClassDeclarationStatement(ClassDeclarationStatement cds)
     {
         StringBuilder builder = new();
         bool isStatic = cds.ClassInfo.IsStatic;
         string isStaticString = isStatic ? "static" : "";
         string className = EscapeCSharpKeyword(cds.ClassInfo.Name);
-        builder.AppendLine($"public {isStaticString} class {className} {{");
+        builder.Append($"public {isStaticString} class {className} ");
+        if (cds.ClassInfo.Implements.Count > 0) builder.Append($": {string.Join(", ", cds.ClassInfo.Implements)} ");
+        builder.AppendLine("{");
         foreach (IStatement statement in cds.Statements) builder.AppendLine(TranslateCodePart(statement));
         builder.AppendLine("}");
 
@@ -294,10 +304,8 @@ public class Translator
     {
         StringBuilder builder = new();
 
-        bool isStatic = fds.IsStatic;
-        string isStaticString = isStatic ? "static" : "";
         string fieldName = EscapeCSharpKeyword(fds.Name);
-        builder.Append($"{fds.Access.ToString().ToLower()} {isStaticString} {string.Join(".", fds.TypeExpressions)} {fieldName}");
+        builder.Append($"{fds.Access.ToString().ToLower()} {string.Join(" ", fds.Modifiers)} {string.Join(".", fds.TypeExpressions)} {fieldName}");
         if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
         builder.Append(';');
 
@@ -307,8 +315,6 @@ public class Translator
     private static string TranslateFieldArrayDeclarationStatement(FieldArrayDeclarationStatement fads)
     {
         StringBuilder builder = new();
-
-        string isStaticString = fads.IsStatic ? "static " : "";
 
         string sizeString = fads.Size != null ? TranslateExpression(fads.Size) : "";
 
@@ -332,7 +338,7 @@ public class Translator
             expression = initBuilder.ToString();
         }
 
-        builder.Append($"{fads.Access.ToString().ToLower()} {isStaticString}{string.Join(".", fads.TypeExpressions)}[] {fads.Name} = {expression};");
+        builder.Append($"{fads.Access.ToString().ToLower()} {string.Join(" ", fads.Modifiers)} {string.Join(".", fads.TypeExpressions)}[] {fads.Name} = {expression};");
 
         return builder.ToString();
     }
@@ -340,7 +346,7 @@ public class Translator
     private static string TranslateFieldAssignmentStatement(FieldAssignmentStatement fas)
     {
         string thisContext = "";
-        if (TranslateExpression(fas.Start) != "this") thisContext = $"{TranslateExpression(fas.TargetExpression)}.";
+        if (TranslateExpression(fas.Start) == "this") thisContext = $"{TranslateExpression(fas.TargetExpression)}.";
         return $"{thisContext}{fas.Name} {fas.OpToken.Value} {TranslateExpression(fas.Expression)};";
     }
 
@@ -349,11 +355,10 @@ public class Translator
         StringBuilder builder = new();
         string[] parameters = new string[mds.Method.Parameters.Count];
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(mds.Method.Parameters[i]);
-        bool isStatic = mds.IsStatic;
-        string isStaticString = isStatic ? "static" : "";
+
         string methodName = EscapeCSharpKeyword(mds.MethodName);
         
-        builder.AppendLine($"{mds.Access.ToString().ToLower()} {isStaticString} {mds.Method.ReturnType} {methodName}({string.Join(", ", parameters)}) {{");
+        builder.AppendLine($"{mds.Access.ToString().ToLower()} {string.Join(" ", mds.Modifiers)} {mds.Method.ReturnType} {methodName}({string.Join(", ", parameters)}) {{");
         IStatement body = mds.Method.Body;
         if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
         else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
@@ -378,6 +383,24 @@ public class Translator
 
         builder.AppendLine($"{ceds.Access.ToString().ToLower()} enum {ceds.Name} {{");
         builder.AppendLine(string.Join(", ", members));
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
+    private static string TranslateClassInterfaceDeclarationStatement(ClassInterfaceDeclarationStatement cids)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine($"{cids.Access.ToString().ToLower()} interface {cids.Name} ");
+        if (cids.Implements.Count > 0) builder.Append($": {string.Join(", ", cids.Implements)}");
+        builder.AppendLine("{");
+
+        foreach ((string, string, List<(string, string)>) method in cids.Methods)
+        {
+            string[] parameters = new string[method.Item3.Count];
+            for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter((method.Item3[i].Item1, method.Item3[i].Item2));
+            builder.AppendLine($"{method.Item2} {method.Item1}({string.Join(", ", parameters)});");
+        }
         builder.AppendLine("}");
 
         return builder.ToString();
@@ -562,13 +585,31 @@ public class Translator
         return builder.ToString();
     }
 
+    private static string TranslateInterfaceDeclarationStatement(InterfaceDeclarationStatement ids)
+    {
+        StringBuilder builder = new();
+        builder.Append($"public interface {ids.Name} ");
+        if (ids.Implements.Count > 0) builder.Append($": {string.Join(", ", ids.Implements)}");
+        builder.AppendLine("{");
+
+        foreach ((string, string, List<(string, string)>) method in ids.Methods)
+        {
+            string[] parameters = new string[method.Item3.Count];
+            for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter((method.Item3[i].Item1, method.Item3[i].Item2));
+            builder.AppendLine($"{method.Item2} {method.Item1}({string.Join(", ", parameters)});");
+        }
+        builder.AppendLine("}");
+
+        return builder.ToString();
+    }
+
     private static string TranslateReturnStatement(ReturnStatement rs)
     {
         if (rs.Expression != null) return $"return {TranslateExpression(rs.Expression)};";
         return "return;";
     }
 
-    private static string TranslateExpression(IExpression expression) => expression switch
+    public static string TranslateExpression(IExpression expression) => expression switch
     {
         LiteralExpression le => TranslateLiteralExpression(le),
         VariableExpression ve => ve.Name,
@@ -646,7 +687,7 @@ public class Translator
 
     private static string TranslateFieldExpression(FieldExpression fe)
     {
-        string targetExpr = fe.Start != null && fe.Start is VariableExpression ve && ve.Name == "this" ? "" : $"{TranslateExpression(fe.Target)}.";
+        string targetExpr = $"{TranslateExpression(fe.Target)}.";
         return $"{targetExpr}{fe.Name}";
     }
 
@@ -654,7 +695,7 @@ public class Translator
     {
         string[] args = new string[mce.Args.Count];
         for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(mce.Args[i]);
-        string targetExpr = mce.Start != null && mce.Start is VariableExpression ve && ve.Name == "this" ? "" : $"{TranslateExpression(mce.Target)}.";
+        string targetExpr = $"{TranslateExpression(mce.Target)}.";
         return $"{targetExpr}{mce.MethodName}({string.Join(", ", args)})";
     }
 

@@ -4,11 +4,10 @@ public enum TokenType
 {
     Identifier,
 
-    Class, Let, Func, If, Else, While, Do, For, Break, Continue, Return, Include,
+    Class, Let, Func, If, Else, While, Do, For, Break, Continue, Return, Include, Use,
 
-    Private, Public, New, This, Constructor, Static, Enum,
+    Private, Public, New, This, Constructor, Static, Virtual, Override, Enum, Interface,
 
-    Int, Float, Double, Decimal, Bool, String,
     IntLiteral, FloatLiteral, DoubleLiteral, DecimalLiteral, StringLiteral, BooleanLiteral,
 
     Plus, Minus, Multiply, Divide, Modulo, Assign,
@@ -20,7 +19,7 @@ public enum TokenType
 
     LBrace, RBrace, LParen, RParen, LBracket, RBracket,
     
-    Semicolon, Comma, Dot, Question, Colon,
+    Semicolon, Comma, Dot, Question, Colon, Implementation,
     
     EOF
 }

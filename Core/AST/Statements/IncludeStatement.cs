@@ -1,6 +1,8 @@
+using Core.Expressions;
+
 namespace Core.AST.Statements;
 
-public class IncludeStatement(string libraryPath) : IStatement
+public class IncludeStatement(IExpression libraryPathExpression) : IStatement
 {
-    public string LibraryPath { get; } = libraryPath;
+    public IExpression LibraryPathExpression { get; } = libraryPathExpression;
 }

@@ -6,6 +6,7 @@ public class ClassInfo(string name)
 {
     public string Name { get; } = name;
     public UserFunction? Constructor { get; private set; }
+    public List<string> Implements { get; set; }
     public bool IsStatic { get; set; }
 
     public void SetConstructor(UserFunction constructor)

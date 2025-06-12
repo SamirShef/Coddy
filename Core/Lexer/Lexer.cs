@@ -11,12 +11,6 @@ public class Lexer (string source)
     {
         { "class", TokenType.Class },
         { "let", TokenType.Let },
-        /*{ "int", TokenType.Int },
-        { "float", TokenType.Float },
-        { "double", TokenType.Double },
-        { "decimal", TokenType.Decimal },
-        { "string", TokenType.String },
-        { "boolean", TokenType.Bool },*/
         { "func", TokenType.Func },
         { "if", TokenType.If },
         { "else", TokenType.Else },
@@ -32,8 +26,12 @@ public class Lexer (string source)
         { "this", TokenType.This },
         { "constructor", TokenType.Constructor },
         { "static", TokenType.Static },
+        { "virt", TokenType.Virtual },
+        { "ovrd", TokenType.Override },
         { "include", TokenType.Include },
+        { "use", TokenType.Use },
         { "enum", TokenType.Enum },
+        { "interface", TokenType.Interface },
     };
 
     public IEnumerable<Token> Tokenize()
@@ -254,7 +252,8 @@ public class Lexer (string source)
                 case '?':
                     yield return new Token(TokenType.Question, "?"); pos++; break;
                 case ':':
-                    yield return new Token(TokenType.Colon, ":"); pos++; break;
+                    if (source[pos + 1] == ':') { yield return new Token(TokenType.Implementation, "::"); pos += 2; break; }
+                    else yield return new Token(TokenType.Colon, ":"); pos++; break;
                 case ';':
                     yield return new Token(TokenType.Semicolon, ";"); pos++; break;
                 case '.':
