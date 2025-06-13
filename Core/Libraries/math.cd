@@ -1,9 +1,9 @@
-static class Math {
+ï»¿static class Math {
 	public static let pi : double = 3.14159265358979323846d;
 	public static let e : double = 2.71828182845904523536d;
 
 	public static func sqrt : int(num : int) {
-		if (num < 0) throw new Exception("Íåëüçÿ âû÷èñëèòü êâàäðàòíûé êîðåíü èç îòðèöàòåëüíîãî ÷èñëà " + to_string(num));
+		if (num < 0) throw new Exception("ÐÐµÐ»ÑŒÐ·Ñ Ð²Ñ‹Ñ‡Ð¸ÑÐ»Ð¸Ñ‚ÑŒ ÐºÐ²Ð°Ð´Ñ€Ð°Ñ‚Ð½Ñ‹Ð¹ ÐºÐ¾Ñ€ÐµÐ½ÑŒ Ð¸Ð· Ð¾Ñ‚Ñ€Ð¸Ñ†Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾Ð³Ð¾ Ñ‡Ð¸ÑÐ»Ð° " + to_string(num));
 		if (num == 0) return 0;
 
 		let sqrt : int = 0;
@@ -19,7 +19,7 @@ static class Math {
 	}
 
 	public static func sqrt : float(num : float) {
-		if (num < 0) throw new Exception("Íåëüçÿ âû÷èñëèòü êâàäðàòíûé êîðåíü èç îòðèöàòåëüíîãî ÷èñëà " + to_string(num));
+		if (num < 0) throw new Exception("ÐÐµÐ»ÑŒÐ·Ñ Ð²Ñ‹Ñ‡Ð¸ÑÐ»Ð¸Ñ‚ÑŒ ÐºÐ²Ð°Ð´Ñ€Ð°Ñ‚Ð½Ñ‹Ð¹ ÐºÐ¾Ñ€ÐµÐ½ÑŒ Ð¸Ð· Ð¾Ñ‚Ñ€Ð¸Ñ†Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾Ð³Ð¾ Ñ‡Ð¸ÑÐ»Ð° " + to_string(num));
 		if (num == 0) return 0;
 
 		let elipson : double = 0.00000000000000000000000000000000000001d;
@@ -35,7 +35,7 @@ static class Math {
 	}
 
 	public static func sqrt : double(num : double) {
-		if (num < 0) throw new Exception("Íåëüçÿ âû÷èñëèòü êâàäðàòíûé êîðåíü èç îòðèöàòåëüíîãî ÷èñëà " + to_string(num));
+		if (num < 0) throw new Exception("ÐÐµÐ»ÑŒÐ·Ñ Ð²Ñ‹Ñ‡Ð¸ÑÐ»Ð¸Ñ‚ÑŒ ÐºÐ²Ð°Ð´Ñ€Ð°Ñ‚Ð½Ñ‹Ð¹ ÐºÐ¾Ñ€ÐµÐ½ÑŒ Ð¸Ð· Ð¾Ñ‚Ñ€Ð¸Ñ†Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾Ð³Ð¾ Ñ‡Ð¸ÑÐ»Ð° " + to_string(num));
 		if (num == 0) return 0;
 
 		let elipson : double = 0.00000000000000000000000000000000000001d;
@@ -51,7 +51,7 @@ static class Math {
 	}
 
 	public static func sqrt : decimal(num : decimal) {
-		if (num < 0) throw new Exception("Íåëüçÿ âû÷èñëèòü êâàäðàòíûé êîðåíü èç îòðèöàòåëüíîãî ÷èñëà " + to_string(num));
+		if (num < 0) throw new Exception("ÐÐµÐ»ÑŒÐ·Ñ Ð²Ñ‹Ñ‡Ð¸ÑÐ»Ð¸Ñ‚ÑŒ ÐºÐ²Ð°Ð´Ñ€Ð°Ñ‚Ð½Ñ‹Ð¹ ÐºÐ¾Ñ€ÐµÐ½ÑŒ Ð¸Ð· Ð¾Ñ‚Ñ€Ð¸Ñ†Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾Ð³Ð¾ Ñ‡Ð¸ÑÐ»Ð° " + to_string(num));
 		if (num == 0) return 0;
 
 		let elipson : decimal = 0.00000000000000000000000000000000000001m;

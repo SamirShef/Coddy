@@ -1,4 +1,4 @@
-include "DllImports/file.dll";
+п»їinclude "DllImports/file.dll";
 include "math.cd";
 
 static class File {
@@ -24,13 +24,13 @@ class List<T> {
 	}
 
 	public func get : T (index : int) {
-		if (index >= length() || index < 0) throw new Exception("Индекс вышел за пределы списка: " + to_string(index));
+		if (index >= length() || index < 0) throw new Exception("РРЅРґРµРєСЃ РІС‹С€РµР» Р·Р° РїСЂРµРґРµР»С‹ СЃРїРёСЃРєР°: " + to_string(index));
 
 		return _values[index];
 	}
 
 	public func set (index : int, value : T) {
-		if (index >= length() || index < 0) throw new Exception("Индекс вышел за пределы списка: " + to_string(index));
+		if (index >= length() || index < 0) throw new Exception("РРЅРґРµРєСЃ РІС‹С€РµР» Р·Р° РїСЂРµРґРµР»С‹ СЃРїРёСЃРєР°: " + to_string(index));
 
 		_values[index] = value;
 	}
@@ -44,7 +44,7 @@ class List<T> {
 	}
 
 	public func remove (value : T) {
-		if (!contains(value)) throw new Exception("Переданный элемент должен содержаться в списке");
+		if (!contains(value)) throw new Exception("РџРµСЂРµРґР°РЅРЅС‹Р№ СЌР»РµРјРµРЅС‚ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊСЃСЏ РІ СЃРїРёСЃРєРµ");
 
 		removeAt(indexOf(value));
 	}
