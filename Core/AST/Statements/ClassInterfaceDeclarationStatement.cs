@@ -6,6 +6,6 @@ public class ClassInterfaceDeclarationStatement(AccessModifier access, string na
 {
     public AccessModifier Access { get; } = access;
     public string Name { get; } = name;
-    public List<string> Implements { get; } = implements;
+    public List<string> Implements { get; set; } = implements;
     public List<(string, string, List<(string, string)>)> Methods { get; } = methods;
 }

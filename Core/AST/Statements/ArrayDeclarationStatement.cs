@@ -6,6 +6,6 @@ public class ArrayDeclarationStatement(string name, IExpression? size, List<stri
 {
     public string Name { get; } = name;
     public IExpression? Size { get; } = size;
-    public List<string> TypeExpressions { get; } = typeExpressions;
+    public List<string> TypeExpressions { get; set; } = typeExpressions;
     public IExpression? Expression { get; } = expression;
 }

@@ -30,6 +30,10 @@ public class Lexer (string source)
         { "ovrd", TokenType.Override },
         { "include", TokenType.Include },
         { "use", TokenType.Use },
+        { "throw", TokenType.Throw },
+        { "try", TokenType.Try },
+        { "catch", TokenType.Catch },
+        { "finally", TokenType.Finally },
         { "enum", TokenType.Enum },
         { "interface", TokenType.Interface },
     };

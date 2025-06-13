@@ -47,6 +47,8 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Break)) return ParseBreakStatement();
         if (Match(TokenType.Continue)) return ParseContinueStatement();
         if (Match(TokenType.Return)) return ParseReturnStatement();
+        if (Match(TokenType.Throw)) return ParseThrowStatement();
+        if (Match(TokenType.Try)) return ParseTryCatchFinalyStatement();
 
         throw new Exception($"Неожиданный токен: {Peek()}.");
     }
@@ -74,6 +76,9 @@ public class Parser (List<Token> tokens)
 
         Token classNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
 
+        string? genericsParameters = null;
+        if (Match(TokenType.Less)) genericsParameters = ParseGenericsParameters();
+
         List<string> implements = [];
         if (Match(TokenType.Implementation))
         {
@@ -98,6 +103,7 @@ public class Parser (List<Token> tokens)
 
         ClassInfo classInfo = new(classNameToken.Value)
         {
+            GenericsParameters = genericsParameters,
             Implements = implements,
             IsStatic = classIsStatic
         };
@@ -173,7 +179,7 @@ public class Parser (List<Token> tokens)
 
         IStatement body = ParseStatementOrBlock();
 
-        UserFunction constructor = new("constructor", "void", parameters, body, []);
+        UserFunction constructor = new("constructor", "void", parameters, body);
 
         return new ConstructorDeclarationStatement(classInfo, constructor);
     }
@@ -189,7 +195,9 @@ public class Parser (List<Token> tokens)
         {
             string typeExpression = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.").Value;
             if (typeExpression == "boolean") typeExpression = "bool";
+            if (Match(TokenType.Less)) typeExpression += $"<{ParseGenericsParameters()}>";
             typeExpressions.Add(typeExpression);
+
             if (Match(TokenType.Dot)) continue;
         }
         
@@ -223,6 +231,10 @@ public class Parser (List<Token> tokens)
         if (!isConstructor) Consume(TokenType.Func, "Отсутствует токен объявления метода 'func'.");
 
         Token methodNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+
+        string? genericsParameters = null;
+        if (Match(TokenType.Less)) genericsParameters = ParseGenericsParameters();
+
         string returnType = "void";
 
         if (!isConstructor && Match(TokenType.Colon))
@@ -274,7 +286,7 @@ public class Parser (List<Token> tokens)
 
         IStatement body = ParseStatementOrBlock();
 
-        UserFunction method = new(methodNameToken.Value, returnType, parameters, body, modifiers);
+        UserFunction method = new(methodNameToken.Value, returnType, parameters, body, genericsParameters);
 
         if (isConstructor)
         {
@@ -403,7 +415,10 @@ public class Parser (List<Token> tokens)
         {
             string typeExpression = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.").Value;
             if (typeExpression == "boolean") typeExpression = "bool";
+            if (Match(TokenType.Less)) typeExpression += $"<{ParseGenericsParameters()}>";
+            
             typeExpressions.Add(typeExpression);
+
             if (Match(TokenType.Dot)) continue;
         }
         
@@ -705,6 +720,10 @@ public class Parser (List<Token> tokens)
     private IStatement ParseFunctionDeclarationStatement()
     {
         Token nameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+
+        string? genericsParameters = null;
+        if (Match(TokenType.Less)) genericsParameters = ParseGenericsParameters();
+
         string returnType = "void";
 
         if (Match(TokenType.Colon))
@@ -755,7 +774,7 @@ public class Parser (List<Token> tokens)
 
         IStatement body = ParseStatementOrBlock();
 
-        UserFunction function = new(nameToken.Value, returnType, parameters, body, []);
+        UserFunction function = new(nameToken.Value, returnType, parameters, body, genericsParameters);
 
         return new FunctionDeclarationStatement(nameToken.Value, function);
     }
@@ -834,6 +853,61 @@ public class Parser (List<Token> tokens)
 
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
         return new ReturnStatement(expr);
+    }
+
+    private IStatement ParseThrowStatement()
+    {
+        IExpression expr = ParseExpression();
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+        return new ThrowStatement(expr);
+    }
+
+    private IStatement ParseTryCatchFinalyStatement()
+    {
+        Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
+        List<IStatement> tryBlock = [];
+        while (Peek().Type != TokenType.RBrace) tryBlock.Add(ParseStatement());
+        Consume(TokenType.RBrace, "Отсутствует токен окончания блока операторов '}'.");
+
+        List<CatchBlock> catchBlocks = [];
+        while (Match(TokenType.Catch))
+        {
+            Consume(TokenType.LParen, "Отсутствует токен начала объявления параметра '('.");
+            string paramName = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.").Value;
+            Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
+            List<string> paramTypeExpressions = [];
+            while (Peek().Type == TokenType.Identifier)
+            {
+                string typeExpression = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.").Value;
+                if (typeExpression == "boolean") typeExpression = "bool";
+                if (Match(TokenType.LBracket))
+                {
+                    typeExpression += "[]";
+                    pos++;
+                }
+                paramTypeExpressions.Add(typeExpression);
+
+                if (Match(TokenType.Dot)) continue;
+            }
+            string paramTypeExpression = string.Join(".", paramTypeExpressions);
+            Consume(TokenType.RParen, "Отсутствует токен конца объявления параметра ')'.");
+
+            List<IStatement> catchBlock = [];
+            Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
+            while(!Match(TokenType.RBrace)) catchBlock.Add(ParseStatement());
+
+            catchBlocks.Add(new CatchBlock(paramName, paramTypeExpression, catchBlock));
+        }
+
+        List<IStatement>? finallyBlock = null;
+        if (Match(TokenType.Finally))
+        {
+            finallyBlock = [];
+            Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
+            while (!Match(TokenType.RBrace)) finallyBlock.Add(ParseStatement());
+        }
+
+        return new TryCatchFinallyStatement(tryBlock, catchBlocks, finallyBlock);
     }
 
     private IStatement ParseStatementOrBlock()
@@ -978,11 +1052,15 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.New))
         {
             Token instanceNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+
+            string? genericsParameters = null;
+            if (Match(TokenType.Less)) genericsParameters = ParseGenericsParameters();
+
             Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов конструктора '('.");
             
             List<IExpression> args = ParseArguments();
 
-            IExpression expression = new NewClassExpression(instanceNameToken.Value, args);
+            IExpression expression = new NewClassExpression(instanceNameToken.Value, genericsParameters, args);
             expression = ParseFieldChain(expression);
             return expression;
         }
@@ -996,7 +1074,20 @@ public class Parser (List<Token> tokens)
                 if (Peek().Type != TokenType.RBracket) Consume(TokenType.Comma, "Отсутствует токен перечисления элементов инициализатора массива ','.");
             }
 
-            return new ArrayDeclarationExpression(expressions);
+            Consume(TokenType.Colon, "Отсутствует разделительный токен между элементами массива и типом ':'.");
+
+            List<string> typeExpressions = [];
+            while (Peek().Type == TokenType.Identifier)
+            {
+                string typeExpression = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.").Value;
+                if (typeExpression == "boolean") typeExpression = "bool";
+                if (Match(TokenType.Less)) typeExpression += $"<{ParseGenericsParameters()}>";
+                typeExpressions.Add(typeExpression);
+
+                if (Match(TokenType.Dot)) continue;
+            }
+
+            return new ArrayDeclarationExpression(expressions, string.Join(".", typeExpressions));
         }
 
         if (Match(TokenType.This))
@@ -1100,6 +1191,19 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Semicolon)) return new MethodCallStatement(target);
 
         return ParseFieldAssignmentStatement(start, target, false);
+    }
+
+    private string ParseGenericsParameters()
+    {
+        List<string> parameters = [];
+
+        while (!Match(TokenType.Greater))
+        {
+            parameters.Add(Consume(TokenType.Identifier, "Отсутствует токен идентификатора.").Value);
+            if (Peek().Type != TokenType.Greater) Consume(TokenType.Comma, "Отсутствует токен перечисления параметров обобщений ','.");
+        }
+
+        return string.Join(", ", parameters);
     }
 
     private Token Peek(int relativePos = 0) => pos + relativePos < tokens.Count ? tokens[pos + relativePos] : throw new IndexOutOfRangeException();

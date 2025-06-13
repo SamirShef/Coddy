@@ -3,7 +3,7 @@ static class Math {
 	public static let e : double = 2.71828182845904523536d;
 
 	public static func sqrt : int(num : int) {
-		if (num < 0) return -1;
+		if (num < 0) throw new Exception("Нельзя вычислить квадратный корень из отрицательного числа " + to_string(num));
 		if (num == 0) return 0;
 
 		let sqrt : int = 0;
@@ -19,7 +19,7 @@ static class Math {
 	}
 
 	public static func sqrt : float(num : float) {
-		if (num < 0) return -1;
+		if (num < 0) throw new Exception("Нельзя вычислить квадратный корень из отрицательного числа " + to_string(num));
 		if (num == 0) return 0;
 
 		let elipson : double = 0.00000000000000000000000000000000000001d;
@@ -35,7 +35,7 @@ static class Math {
 	}
 
 	public static func sqrt : double(num : double) {
-		if (num < 0) return -1;
+		if (num < 0) throw new Exception("Нельзя вычислить квадратный корень из отрицательного числа " + to_string(num));
 		if (num == 0) return 0;
 
 		let elipson : double = 0.00000000000000000000000000000000000001d;
@@ -51,7 +51,7 @@ static class Math {
 	}
 
 	public static func sqrt : decimal(num : decimal) {
-		if (num < 0) return -1;
+		if (num < 0) throw new Exception("Нельзя вычислить квадратный корень из отрицательного числа " + to_string(num));
 		if (num == 0) return 0;
 
 		let elipson : decimal = 0.00000000000000000000000000000000000001m;

@@ -7,3 +7,61 @@ static class File {
 	public static func readAllText : string(filePath : string) { return CoddyFile.ReadAllText(filePath); }
 	public static func writeAllText(filePath : string, source : string) { CoddyFile.WriteAllText(filePath, source); }
 }
+
+class List<T> {
+	private let _values : T[];
+
+	constructor() {
+		_values = [] : T;
+	}
+
+	public func add (value : T) {
+		let newValues : T[length() + 1];
+		for (i : int : i < length() : i++) newValues[i] = _values[i];
+		newValues[length()] = value;
+
+		_values = newValues;
+	}
+
+	public func get : T (index : int) {
+		if (index >= length() || index < 0) throw new Exception("Индекс вышел за пределы списка: " + to_string(index));
+
+		return _values[index];
+	}
+
+	public func set (index : int, value : T) {
+		if (index >= length() || index < 0) throw new Exception("Индекс вышел за пределы списка: " + to_string(index));
+
+		_values[index] = value;
+	}
+
+	public func removeAt (index : int) {
+		let newValues : T[length() - 1];
+		for (i : int : i < index : i++) newValues[i] = _values[i];
+		for (i : int = index + 1 : i < length() : i++) newValues[i - 1] = _values[i];
+
+		_values = newValues;
+	}
+
+	public func remove (value : T) {
+		if (!contains(value)) throw new Exception("Переданный элемент должен содержаться в списке");
+
+		removeAt(indexOf(value));
+	}
+
+	public func contains : boolean (value : T) {
+		return indexOf(value) != -1 ? true : false;
+	}
+
+	public func indexOf : int (value : T) {
+		for (i : int : i < length() : i++) {
+			if (_values[i].Equals(value)) return i;
+		}
+
+		return -1;
+	}
+
+	public func length : int() {
+		return len(_values);
+	}
+}

@@ -4,7 +4,7 @@ public enum TokenType
 {
     Identifier,
 
-    Class, Let, Func, If, Else, While, Do, For, Break, Continue, Return, Include, Use,
+    Class, Let, Func, If, Else, While, Do, For, Break, Continue, Return, Include, Use, Throw, Try, Catch, Finally,
 
     Private, Public, New, This, Constructor, Static, Virtual, Override, Enum, Interface,
 
