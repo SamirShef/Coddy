@@ -36,6 +36,9 @@ public class Lexer (string source)
         { "finally", TokenType.Finally },
         { "enum", TokenType.Enum },
         { "interface", TokenType.Interface },
+        { "getter", TokenType.Getter },
+        { "setter", TokenType.Setter },
+        { "parent", TokenType.Parent },
     };
 
     public IEnumerable<Token> Tokenize()
@@ -153,6 +156,11 @@ public class Lexer (string source)
                     if (source[pos + 1] == '=')
                     {
                         yield return new Token(TokenType.Equals, "==");
+                        pos += 2;
+                    }
+                    else if (source[pos + 1] == '>')
+                    {
+                        yield return new Token(TokenType.Lambda, "=>");
                         pos += 2;
                     }
                     else

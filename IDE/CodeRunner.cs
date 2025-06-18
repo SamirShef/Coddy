@@ -3,7 +3,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace IDE
+namespace Coddy.IDE
 {
     public static class CodeRunner
     {
@@ -33,10 +33,10 @@ namespace IDE
                 var programType = assembly.GetType("Program") ?? throw new Exception("Не удалось найти класс Program");
                 var mainMethod = programType.GetMethod("__Main__", BindingFlags.Public | BindingFlags.Static) ?? throw new Exception("Не удалось найти метод __Main__()");
 
-                Console.WriteLine("Выполнение");
+                Console.WriteLine($"Выполнение\n{new string('-', 10)}");
                 mainMethod.Invoke(null, null);
             }
             catch (Exception ex) { throw new Exception($"Ошибка при выполнении кода: {ex.Message}", ex); }
         }
     }
-} 
+}

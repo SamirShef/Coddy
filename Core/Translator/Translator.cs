@@ -99,13 +99,7 @@ public class Translator
 
     public string TranslateIncludeStatement(IncludeStatement ins)
     {
-        static string GetProjectRootPath()
-        {
-            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.GetFullPath(Path.Combine(baseDirectory, "..", "..", "..", ".."));
-        }
-
-        string fullPath = Path.Combine(GetProjectRootPath(), "Core", "Libraries", TranslateExpression(ins.LibraryPathExpression).TrimEnd('\"').TrimStart('\"'));
+        string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Libraries", TranslateExpression(ins.LibraryPathExpression).TrimEnd('\"').TrimStart('\"'));
 
         if (!File.Exists(fullPath)) throw new Exception($"Библиотека по пути {fullPath} не найдена.");
 
@@ -311,9 +305,16 @@ public class Translator
         StringBuilder builder = new();
 
         string fieldName = EscapeCSharpKeyword(fds.Name);
-        builder.Append($"{fds.Access.ToString().ToLower()} {string.Join(" ", fds.Modifiers)} {string.Join(".", fds.TypeExpressions)} {fieldName}");
-        if (fds.Expression != null) builder.Append($" = {TranslateExpression(fds.Expression)}");
-        builder.Append(';');
+        builder.Append($"{fds.Access.ToString().ToLower()} {string.Join(" ", fds.Modifiers)} {string.Join(".", fds.TypeExpressions)} {fieldName} ");
+        if (fds.HasGetter || fds.HasSetter)
+        {
+            builder.Append("{ ");
+            if (fds.HasGetter) builder.Append("get; ");
+            if (fds.HasSetter) builder.Append("set; ");
+            builder.Append("} ");
+        }
+        if (fds.Expression != null) builder.Append($"= {TranslateExpression(fds.Expression)}");
+        if (!fds.HasGetter && !fds.HasSetter) builder.Append(';');
 
         return builder.ToString();
     }
@@ -344,15 +345,24 @@ public class Translator
             expression = initBuilder.ToString();
         }
 
-        builder.Append($"{fads.Access.ToString().ToLower()} {string.Join(" ", fads.Modifiers)} {string.Join(".", fads.TypeExpressions)}[] {fads.Name} = {expression};");
+        builder.Append($"{fads.Access.ToString().ToLower()} {string.Join(" ", fads.Modifiers)} {string.Join(".", fads.TypeExpressions)}[] {fads.Name} ");
+
+        if (fads.HasGetter || fads.HasSetter)
+        {
+            builder.Append("{ ");
+            if (fads.HasGetter) builder.Append("get; ");
+            if (fads.HasSetter) builder.Append("set; ");
+            builder.Append("} ");
+        }
+
+        builder.Append($"= {expression};");
 
         return builder.ToString();
     }
 
     private static string TranslateFieldAssignmentStatement(FieldAssignmentStatement fas)
     {
-        string thisContext = "";
-        if (TranslateExpression(fas.Start) == "this") thisContext = $"{TranslateExpression(fas.TargetExpression)}.";
+        string thisContext = $"{TranslateExpression(fas.TargetExpression)}.";
         string expression = TranslateExpression(fas.Expression);
         if (fas.Expression is ArrayDeclarationExpression ads) expression = TranslateArrayDeclarationExpression(ads, ads.TypeExpression);
 

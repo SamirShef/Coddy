@@ -26,7 +26,7 @@
 		let z : float = num;
 		let y : float = 0.5f * (z + num / z);
 
-		while (this.abs(z - y) > elipson) {
+		while (abs(z - y) > elipson) {
 			z = y;
 			y = 0.5f * (z + num / z);
 		}
@@ -42,7 +42,7 @@
 		let z : double = num;
 		let y : double = 0.5d * (z + num / z);
 
-		while (this.abs(z - y) > elipson) {
+		while (abs(z - y) > elipson) {
 			z = y;
 			y = 0.5d * (z + num / z);
 		}
@@ -58,7 +58,7 @@
 		let z : decimal = num;
 		let y : decimal = 0.5m * (z + num / z);
 
-		while (this.abs(z - y) > elipson) {
+		while (abs(z - y) > elipson) {
 			z = y;
 			y = 0.5m * (z + num / z);
 		}

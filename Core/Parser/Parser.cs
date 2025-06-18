@@ -188,6 +188,23 @@ public class Parser (List<Token> tokens)
     {
         Consume(TokenType.Let, "Отсутствует токен объявления поля 'let'.");
         Token fieldNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
+
+        bool hasGetter = false;
+        bool hasSetter = false;
+        
+        if (Match(TokenType.LParen))
+        {
+            while (!Match(TokenType.RParen))
+            {
+                if (Match(TokenType.Getter)) hasGetter = true;
+                else if (Match(TokenType.Setter)) hasSetter = true;
+                else if (hasGetter && hasSetter) throw new Exception("Поле может иметь до двух свойств (getter и/или setter).");
+                else throw new Exception("Отсутствует токен свойства (getter или setter).");
+
+                if (Peek().Type != TokenType.RParen) Consume(TokenType.Comma, "Отсутствует токен перечисления свойств ','.");
+            }
+        }
+
         Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
 
         List<string> typeExpressions = [];
@@ -201,16 +218,16 @@ public class Parser (List<Token> tokens)
             if (Match(TokenType.Dot)) continue;
         }
         
-        if (Match(TokenType.LBracket)) return ParseFieldArrayDeclarationStatement(classInfo, fieldNameToken.Value, typeExpressions, access, modifiers);
+        if (Match(TokenType.LBracket)) return ParseFieldArrayDeclarationStatement(classInfo, fieldNameToken.Value, typeExpressions, access, modifiers, hasGetter, hasSetter);
 
         IExpression? initialExpression = null;
         if (Match(TokenType.Assign)) initialExpression = ParseExpression();
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new FieldDeclarationStatement(fieldNameToken.Value, typeExpressions, access, initialExpression, modifiers);
+        return new FieldDeclarationStatement(fieldNameToken.Value, typeExpressions, access, initialExpression, modifiers, hasGetter, hasSetter);
     }
 
-    private IStatement ParseFieldArrayDeclarationStatement(ClassInfo classInfo, string name, List<string> typeExpressions, AccessModifier access, List<string> modifiers)
+    private IStatement ParseFieldArrayDeclarationStatement(ClassInfo classInfo, string name, List<string> typeExpressions, AccessModifier access, List<string> modifiers, bool hasGetter, bool hasSetter)
     {
         Token primaryTypeToken = Peek(-2);
         IExpression? size = null;
@@ -222,7 +239,7 @@ public class Parser (List<Token> tokens)
 
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new FieldArrayDeclarationStatement(name, typeExpressions, access, size, modifiers, expression);
+        return new FieldArrayDeclarationStatement(name, typeExpressions, access, size, modifiers, hasGetter, hasSetter, expression);
     }
 
     private IStatement ParseMethodDeclarationStatement(AccessModifier access, ClassInfo classInfo, List<string> modifiers)
