@@ -51,23 +51,13 @@ namespace Coddy.IDE
                     }
                     catch (Exception ex)
                     {
-                        // Закрываем консоль перед показом ошибки
                         var consoleWindow = GetConsoleWindow();
                         ShowWindow(consoleWindow, SW_HIDE);
                         FreeConsole();
 
-                        // Показываем ошибку в отдельном окне
-                        MessageBox.Show(
-                            $"Ошибка при выполнении кода:\n{ex.Message}\n\nStackTrace:\n{ex.StackTrace}",
-                            "Ошибка выполнения",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error
-                        );
+                        MessageBox.Show($"Ошибка при выполнении кода:\n{ex.Message}\n\nStackTrace:\n{ex.StackTrace}", "Ошибка выполнения", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
-                    finally
-                    {
-                        Shutdown();
-                    }
+                    finally { Shutdown(); }
                 }
             }
         }

@@ -2,6 +2,8 @@
 
 public static class RuntimeHelper
 {
+    public static void Print(object message) => Console.Write(message);
+
     public static void Println(object message) => Console.WriteLine(message);
 
     public static string Input()

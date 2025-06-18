@@ -43,7 +43,7 @@ public class Translator
             }
         }
 
-        builder.AppendLine("public class Program {");
+        builder.AppendLine("public class __Program__ {");
         builder.AppendLine("public static void __Main__() {");
         foreach (IStatement statement in statementsInMain) builder.AppendLine($"{TranslateCodePart(statement)}");
         builder.AppendLine("}");
@@ -94,6 +94,7 @@ public class Translator
         ContinueStatement => "continue;",
         ThrowStatement ts => $"throw {TranslateExpression(ts.Expression)};",
         TryCatchFinallyStatement tcfs => TranslateTryCatchFinallyStatement(tcfs),
+        LambdaExpressionStatement les => TranslateLambdaExpressionStatement(les),
         _ => throw new Exception($"Невозможно обработать данный тип команды ({statement}).")
     };
 
@@ -240,10 +241,7 @@ public class Translator
             string source = File.ReadAllText(csPath);
             return source;
         }
-        catch (Exception ex)
-        {
-            throw new Exception($"Ошибка при трансляции C# библиотеки: {ex.Message}");
-        }
+        catch (Exception ex) { throw new Exception($"Ошибка при трансляции C# библиотеки: {ex.Message}"); }
     }
 
     private static string GetCSTypeName(Type type)
@@ -379,12 +377,17 @@ public class Translator
 
         string genericsParameters = "";
         if (mds.Method.GenericsParameters != null) genericsParameters = $"<{mds.Method.GenericsParameters}>";
-
-        builder.AppendLine($"{mds.Access.ToString().ToLower()} {string.Join(" ", mds.Modifiers)} {mds.Method.ReturnType} {methodName}{genericsParameters} ({string.Join(", ", parameters)}) {{");
         IStatement body = mds.Method.Body;
-        if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
-        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
-        builder.AppendLine("}");
+
+        builder.Append($"{mds.Access.ToString().ToLower()} {string.Join(" ", mds.Modifiers)} {mds.Method.ReturnType} {methodName}{genericsParameters} ({string.Join(", ", parameters)})");
+        if (body is not LambdaExpressionStatement)
+        {
+            builder.AppendLine(" {");
+            if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
+            else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+            builder.AppendLine("}");
+        }
+        else builder.AppendLine(TranslateCodePart(body));
 
         return builder.ToString();
     }
@@ -434,11 +437,23 @@ public class Translator
         StringBuilder builder = new();
         string[] parameters = new string[cds.Constructor.Parameters.Count];
         for (int i = 0; i < parameters.Length; i++) parameters[i] = TranslateFunctionParameter(cds.Constructor.Parameters[i]);
-        builder.AppendLine($"public {cds.ClassInfo.Name}({string.Join(", ", parameters)}) {{");
         IStatement body = cds.Constructor.Body;
-        if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
-        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
-        builder.AppendLine("}");
+
+        builder.Append($"public {cds.ClassInfo.Name}({string.Join(", ", parameters)})");
+        if (cds.ParentParameters.Count != 0)
+        {
+            string[] parentParameters = new string[cds.ParentParameters.Count];
+            for (int i = 0; i < parentParameters.Length; i++) parentParameters[i] = TranslateExpression(cds.ParentParameters[i]);
+            builder.AppendLine($" : base({string.Join(", ", parentParameters)})");
+        }
+        if (body is not LambdaExpressionStatement)
+        {
+            builder.AppendLine(" {");
+            if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
+            else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+            builder.AppendLine("}");
+        }
+        else builder.AppendLine(TranslateCodePart(body));
 
         return builder.ToString();
     }
@@ -559,14 +574,18 @@ public class Translator
 
         string genericsParameters = "";
         if (fds.UserFunction.GenericsParameters != null) genericsParameters = $"<{fds.UserFunction.GenericsParameters}>";
-
-        builder.AppendLine($"public static {fds.UserFunction.ReturnType} {fds.Name}{genericsParameters} ({string.Join(", ", parameters)}) {{");
-        
         IStatement body = fds.UserFunction.Body;
-        if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
-        else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
+
+        builder.AppendLine($"public static {fds.UserFunction.ReturnType} {fds.Name}{genericsParameters} ({string.Join(", ", parameters)})");
+        if (body is not LambdaExpressionStatement)
+        {
+            builder.AppendLine(" {");
+            if (body is not BlockStatement bs) builder.AppendLine(TranslateCodePart(body));
+            else foreach (IStatement statement in bs.Statements) builder.AppendLine(TranslateCodePart(statement));
         
-        builder.AppendLine("}");
+            builder.AppendLine("}");
+        }
+        else builder.AppendLine(TranslateCodePart(body));
 
         return builder.ToString();
     }
@@ -580,6 +599,7 @@ public class Translator
 
         return fcs.Name switch
         {
+            "print" => $"RuntimeHelper.Print({string.Join(", ", args)});",
             "println" => $"RuntimeHelper.Println({string.Join(", ", args)});",
             "input" => $"RuntimeHelper.Input({string.Join(", ", args)});",
             "to_int" => $"RuntimeHelper.ToInt({string.Join(", ", args)});",
@@ -664,6 +684,16 @@ public class Translator
         return builder.ToString();
     }
 
+    private static string TranslateLambdaExpressionStatement(LambdaExpressionStatement les)
+    {
+        if (les.Parameters == null) return $" => {TranslateExpression(les.Expression)};";
+
+        string[] parameters = new string[les.Parameters.Count];
+        for (int i = 0; i < parameters.Length; i++) parameters[i] = $"{les.Parameters[i].Item2} {les.Parameters[i].Item1}";
+
+        return $"({string.Join(", ", parameters)}) => {TranslateExpression(les.Expression)};";
+    }
+
     public static string TranslateExpression(IExpression expression) => expression switch
     {
         LiteralExpression le => TranslateLiteralExpression(le),
@@ -671,6 +701,7 @@ public class Translator
         ArrayExpression ae => TranslateArrayExpression(ae),
         ArrayFieldExpression afe => TranslateArrayFieldExpression(afe),
         ArrayDeclarationExpression ade => TranslateArrayDeclarationExpression(ade),
+        AssignmentExpression ae => TranslateAssignmentExpression(ae),
         UnaryExpression ue => TranslateUnaryExpression(ue),
         BinaryExpression be => TranslateBinaryExpression(be),
         TernaryExpression te => TranslateTernaryExpression(te),
@@ -678,6 +709,7 @@ public class Translator
         NewClassExpression nce => TranslateNewClassExpression(nce),
         FieldExpression fe => TranslateFieldExpression(fe),
         MethodCallExpression mce => TranslateMethodCallExpression(mce),
+        LambdaExpression le => TranslateLambdaExpression(le),
         _ => throw new Exception($"Невозможно обработать данный тип выражения ({expression}).")
     };
 
@@ -705,6 +737,15 @@ public class Translator
         return $"new {typeString!}[{size}] {{ {string.Join(", ", elements)} }}";
     }
 
+    private static string TranslateAssignmentExpression(AssignmentExpression ae)
+    {
+        string thisContext = $"{TranslateExpression(ae.TargetExpression)}.";
+        string expression = TranslateExpression(ae.Expression);
+        if (ae.Expression is ArrayDeclarationExpression ads) expression = TranslateArrayDeclarationExpression(ads, ads.TypeExpression);
+
+        return $"{thisContext}{ae.Name} = {expression}";
+    }
+
     private static string TranslateUnaryExpression(UnaryExpression ue) => $"{ue.Op.Value}{TranslateExpression(ue.Expression)}";
 
     private static string TranslateBinaryExpression(BinaryExpression be) => $"({TranslateExpression(be.Left)} {be.Op.Value} {TranslateExpression(be.Right)})";
@@ -718,6 +759,7 @@ public class Translator
 
         return fce.Name switch
         {
+            "print" => $"RuntimeHelper.Print({string.Join(", ", args)})",
             "println" => $"RuntimeHelper.Println({string.Join(", ", args)})",
             "input" => $"RuntimeHelper.Input({string.Join(", ", args)})",
             "to_int" => $"RuntimeHelper.ToInt({string.Join(", ", args)})",
@@ -743,11 +785,7 @@ public class Translator
         return $"new {nce.Name}{genericsParameters}({string.Join(", ", args)})";
     }
 
-    private static string TranslateFieldExpression(FieldExpression fe)
-    {
-        string targetExpr = $"{TranslateExpression(fe.Target)}.";
-        return $"{targetExpr}{fe.Name}";
-    }
+    private static string TranslateFieldExpression(FieldExpression fe) => $"{TranslateExpression(fe.Target)}.{fe.Name}";
 
     private static string TranslateMethodCallExpression(MethodCallExpression mce)
     {
@@ -755,6 +793,14 @@ public class Translator
         for (int i = 0; i < args.Length; i++) args[i] = TranslateExpression(mce.Args[i]);
         string targetExpr = $"{TranslateExpression(mce.Target)}.";
         return $"{targetExpr}{mce.MethodName}({string.Join(", ", args)})";
+    }
+
+    private static string TranslateLambdaExpression(LambdaExpression le)
+    {
+        string[] parameters = new string[le.Parameters.Count];
+        for (int i = 0; i < parameters.Length; i++) parameters[i] = $"{le.Parameters[i].Item2} {le.Parameters[i].Item1}";
+
+        return $"({string.Join(", ", parameters)}) => {TranslateExpression(le.Expression)}";
     }
 
     private static string GetDefaultSuffixByType(TypeValue type) => type switch

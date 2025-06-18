@@ -177,11 +177,22 @@ public class Parser (List<Token> tokens)
             parameters.Add((parameterName.Value, paramTypeExpression));
         }
 
-        IStatement body = ParseStatementOrBlock();
+        List<IExpression> parentParameters = [];
+        if (Match(TokenType.Colon))
+        {
+            Consume(TokenType.Parent, "Отсутствует токен вызова базового конструктора 'parent'.");
+            Consume(TokenType.LParen, "Отсутствует токен начала перечисления аргументов '('.");
+
+            while (!Match(TokenType.RParen)) parentParameters.Add(ParseExpression());
+        }
+
+        IStatement body;
+        if (Match(TokenType.Lambda)) body = ParseLambdaExpressionStatement();
+        else body = ParseStatementOrBlock();
 
         UserFunction constructor = new("constructor", "void", parameters, body);
 
-        return new ConstructorDeclarationStatement(classInfo, constructor);
+        return new ConstructorDeclarationStatement(classInfo, constructor, parentParameters);
     }
 
     private IStatement ParseFieldDeclarationStatement(AccessModifier access, ClassInfo classInfo, List<string> modifiers)
@@ -301,7 +312,9 @@ public class Parser (List<Token> tokens)
             parameters.Add((paramName.Value, paramTypeExpression));
         }
 
-        IStatement body = ParseStatementOrBlock();
+        IStatement body;
+        if (Match(TokenType.Lambda)) body = ParseLambdaExpressionStatement();
+        else body = ParseStatementOrBlock();
 
         UserFunction method = new(methodNameToken.Value, returnType, parameters, body, genericsParameters);
 
@@ -789,11 +802,22 @@ public class Parser (List<Token> tokens)
             parameters.Add((paramName.Value, paramTypeExpression));
         }
 
-        IStatement body = ParseStatementOrBlock();
+        IStatement body;
+        if (Match(TokenType.Lambda)) body = ParseLambdaExpressionStatement();
+        else body = ParseStatementOrBlock();
 
         UserFunction function = new(nameToken.Value, returnType, parameters, body, genericsParameters);
 
         return new FunctionDeclarationStatement(nameToken.Value, function);
+    }
+
+    private IStatement ParseLambdaExpressionStatement(List<(string, string)>? parameters = null)
+    {
+        IExpression expression = ParseExpression();
+
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new LambdaExpressionStatement(parameters, expression);
     }
 
     private IStatement ParseIfElseStatement()
@@ -1107,9 +1131,9 @@ public class Parser (List<Token> tokens)
             return new ArrayDeclarationExpression(expressions, string.Join(".", typeExpressions));
         }
 
-        if (Match(TokenType.This))
+        if (Match(TokenType.This) || Match(TokenType.Parent))
         {
-            IExpression expression = new VariableExpression("this");
+            IExpression expression = new VariableExpression(Peek(-1).Value == "this" ? "this" : "base");
             expression = ParseFieldChain(expression);
             return expression;
         }
@@ -1167,6 +1191,7 @@ public class Parser (List<Token> tokens)
 
             if (Match(TokenType.LParen)) expr = new MethodCallExpression(expr, fieldToken.Value, ParseArguments(), start);
             else if (Match(TokenType.LBracket)) expr = ParseArrayFieldExpression(expr, fieldToken.Value);
+            else if (Match(TokenType.Assign)) expr = new AssignmentExpression(expr, fieldToken.Value, ParseExpression());
             else expr = new FieldExpression(expr, fieldToken.Value, start);
         }
 

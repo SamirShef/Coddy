@@ -30,7 +30,7 @@ namespace Coddy.IDE
                 ms.Seek(0, SeekOrigin.Begin);
                 var assembly = Assembly.Load(ms.ToArray());
 
-                var programType = assembly.GetType("Program") ?? throw new Exception("Не удалось найти класс Program");
+                var programType = assembly.GetType("__Program__") ?? throw new Exception("Не удалось найти класс __Program__");
                 var mainMethod = programType.GetMethod("__Main__", BindingFlags.Public | BindingFlags.Static) ?? throw new Exception("Не удалось найти метод __Main__()");
 
                 Console.WriteLine($"Выполнение\n{new string('-', 10)}");
