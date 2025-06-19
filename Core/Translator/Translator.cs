@@ -315,7 +315,9 @@ public class Translator
         StringBuilder builder = new();
 
         string fieldName = EscapeCSharpKeyword(fds.Name);
-        builder.Append($"{fds.Access.ToString().ToLower()} {string.Join(" ", fds.Modifiers)} {string.Join(".", fds.TypeExpressions)} {fieldName} ");
+        builder.Append($"{fds.Access.ToString().ToLower()} {string.Join(" ", fds.Modifiers)} ");
+        if (fds.IsConstant) builder.Append("const ");
+        builder.Append($"{string.Join(".", fds.TypeExpressions)} {fieldName} ");
         if (fds.HasGetter || fds.HasSetter)
         {
             builder.Append("{ ");
@@ -473,7 +475,8 @@ public class Translator
     private static string TranslateVariableDeclarationStatement(VariableDeclarationStatement vds)
     {
         StringBuilder builder = new();
-        
+
+        if (vds.IsConstant) builder.Append("const ");
         builder.Append($"{string.Join(".", vds.TypeExpressions)} {vds.Name} = ");
         if (vds.Expression != null) builder.Append($"{TranslateExpression(vds.Expression)}");
         else builder.Append(GetDefaultValueByStringTypeValue(vds.TypeExpressions[^1]));

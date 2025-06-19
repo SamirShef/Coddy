@@ -1,6 +1,6 @@
 ﻿static class Math {
-	public static let pi : double = 3.14159265358979323846d;
-	public static let e : double = 2.71828182845904523536d;
+	public let(const) pi : double = 3.14159265358979323846d;
+	public let(const) e : double = 2.71828182845904523536d;
 
 	public static func sqrt : int(num : int) {
 		if (num < 0) throw new Exception("Нельзя вычислить квадратный корень из отрицательного числа " + to_string(num));

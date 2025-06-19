@@ -199,6 +199,15 @@ public class Parser (List<Token> tokens)
     private IStatement ParseFieldDeclarationStatement(AccessModifier access, ClassInfo classInfo, List<string> modifiers)
     {
         Consume(TokenType.Let, "Отсутствует токен объявления поля 'let'.");
+        bool isConstant = false;
+        if (Match(TokenType.LParen))
+        {
+            Consume(TokenType.Const, "Отсутствует модификатор объявления константы 'const'.");
+            Consume(TokenType.RParen, "Отсутствует токен закрывающей круглой скобки ')'.");
+
+            isConstant = true;
+        }
+
         Token fieldNameToken = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
 
         bool hasGetter = false;
@@ -236,7 +245,7 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Assign)) initialExpression = ParseExpression();
         Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new FieldDeclarationStatement(fieldNameToken.Value, typeExpressions, access, initialExpression, modifiers, hasGetter, hasSetter);
+        return new FieldDeclarationStatement(fieldNameToken.Value, isConstant, typeExpressions, access, initialExpression, modifiers, hasGetter, hasSetter);
     }
 
     private IStatement ParseFieldArrayDeclarationStatement(ClassInfo classInfo, string name, List<string> typeExpressions, AccessModifier access, List<string> modifiers, bool hasGetter, bool hasSetter)
@@ -438,8 +447,18 @@ public class Parser (List<Token> tokens)
 
     private IStatement ParseVariableDeclarationStatement(bool fromForStatement = false)
     {
+        bool isConstant = false;
+        if (Match(TokenType.LParen))
+        {
+            Consume(TokenType.Const, "Отсутствует модификатор объявления константы 'const'.");
+            Consume(TokenType.RParen, "Отсутствует токен закрывающей круглой скобки ')'.");
+
+            isConstant = true;
+        }
+
         Token identifier = Consume(TokenType.Identifier, "Отсутствует токен идентификатора.");
         string identifierName = identifier.Value;
+
         Consume(TokenType.Colon, "Отсутствует разделительный токен между идентификатором и типом ':'.");
         List<string> typeExpressions = [];
         while (Peek().Type == TokenType.Identifier)
@@ -460,7 +479,7 @@ public class Parser (List<Token> tokens)
         if (expression != null) expression = ParseFieldChain(expression);
         if (!fromForStatement) Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
 
-        return new VariableDeclarationStatement(identifierName, typeExpressions, expression);
+        return new VariableDeclarationStatement(identifierName, isConstant, typeExpressions, expression);
     }
 
     private IStatement ParseArrayDeclarationStatement(string name, List<string> typeExpressions)
