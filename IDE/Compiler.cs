@@ -28,6 +28,6 @@ public class Compiler
 
         Console.WriteLine($"{new string('-', 10)}\nВыполнение завершено");
 
-        File.Delete(programPath);
+        //File.Delete(programPath);
     }
 }

@@ -40,6 +40,7 @@ public class Parser (List<Token> tokens)
         if (Match(TokenType.Enum)) return ParseEnumDeclarationStatement();
         if (Match(TokenType.Interface)) return ParseInterfaceDeclarationStatement();
         if (Match(TokenType.Func)) return ParseFunctionDeclarationStatement();
+        if (Match(TokenType.Switch)) return ParseSwitchStatement();
         if (Match(TokenType.If)) return ParseIfElseStatement();
         if (Match(TokenType.While)) return ParseWhileLoopStatement();
         if (Match(TokenType.Do)) return ParseDoWhileLoopStatement();
@@ -495,6 +496,7 @@ public class Parser (List<Token> tokens)
             expr = ParseFieldChain(expr);
             args.Add(expr);
         }
+
         return args;
     }
 
@@ -811,13 +813,28 @@ public class Parser (List<Token> tokens)
         return new FunctionDeclarationStatement(nameToken.Value, function);
     }
 
-    private IStatement ParseLambdaExpressionStatement(List<(string, string)>? parameters = null)
+    private IStatement ParseSwitchStatement()
     {
+        Consume(TokenType.LParen, "Отсутствует токен открывающей круглой скобки '('.");
         IExpression expression = ParseExpression();
+        Consume(TokenType.RParen, "Отсутствует токен закрывающей круглой скобки ')'.");
 
-        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+        List<(IExpression, IStatement)> cases = [];
+        (IExpression, IStatement)? defaultCase = null;
+        Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
+        while (!Match(TokenType.RBrace))
+        {
+            IExpression caseExpression = ParsePrimary();
+            Consume(TokenType.Lambda, "Отсутствует токен перехода к блоку операторов '=>'.");
+            IStatement caseBlock;
+            if (!Match(TokenType.LBrace)) caseBlock = ParseStatement();
+            else caseBlock = ParseStatementOrBlock();
 
-        return new LambdaExpressionStatement(parameters, expression);
+            if (caseExpression is VariableExpression ve && ve.Name == "_") defaultCase = (caseExpression, caseBlock);
+            else cases.Add((caseExpression, caseBlock));
+        }
+
+        return new SwitchStatement(expression, cases, defaultCase);
     }
 
     private IStatement ParseIfElseStatement()
@@ -953,12 +970,21 @@ public class Parser (List<Token> tokens)
 
     private IStatement ParseStatementOrBlock()
     {
-        if (Peek().Type != TokenType.LBrace) return ParseStatement();
-        Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
+        if (!Match(TokenType.LBrace)) return ParseStatement();
+
         List<IStatement> block = [];
-        while (Peek().Type != TokenType.RBrace) block.Add(ParseStatement());
-        Consume(TokenType.RBrace, "Отсутствует токен окончания блока операторов '}'.");
+        while (!Match(TokenType.RBrace)) block.Add(ParseStatement());
+
         return new BlockStatement(block);
+    }
+
+    private IStatement ParseLambdaExpressionStatement(List<(string, string)>? parameters = null)
+    {
+        IExpression expression = ParseExpression();
+
+        Consume(TokenType.Semicolon, "Отсутствует токен завершения строки ';'.");
+
+        return new LambdaExpressionStatement(parameters, expression);
     }
 
     private IExpression ParseExpression() => ParseTernaty();

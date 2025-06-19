@@ -45,7 +45,12 @@ public class Translator
 
         builder.AppendLine("public class __Program__ {");
         builder.AppendLine("public static void __Main__() {");
-        foreach (IStatement statement in statementsInMain) builder.AppendLine($"{TranslateCodePart(statement)}");
+        foreach (IStatement statement in statementsInMain)
+        {
+            if (CodePartInCSharpMain(statement)) builder.AppendLine($"{TranslateCodePart(statement)}");
+            else throw new Exception("Нельзя выполнить оператор за пределами функции main().");
+        }
+        builder.AppendLine("main();");
         builder.AppendLine("}");
 
         foreach (IStatement statement in statementsInGlobalClass) 
@@ -59,9 +64,15 @@ public class Translator
         return builder.ToString();
     }
 
+    private static bool CodePartInCSharpMain(IStatement statement) => statement switch
+    {
+        VariableDeclarationStatement or FunctionDeclarationStatement => true,
+        _ => false
+    };
+
     private static bool CodePartInGlobal(IStatement statement) => statement switch
     {
-        IncludeStatement or UseStatement or ClassDeclarationStatement or FunctionDeclarationStatement or EnumDeclarationStatement or InterfaceDeclarationStatement => true,
+        IncludeStatement or UseStatement or ClassDeclarationStatement or EnumDeclarationStatement or InterfaceDeclarationStatement => true,
         _ => false
     };
 
@@ -95,6 +106,7 @@ public class Translator
         ThrowStatement ts => $"throw {TranslateExpression(ts.Expression)};",
         TryCatchFinallyStatement tcfs => TranslateTryCatchFinallyStatement(tcfs),
         LambdaExpressionStatement les => TranslateLambdaExpressionStatement(les),
+        SwitchStatement ss => TranslateSwitchStatement(ss),
         _ => throw new Exception($"Невозможно обработать данный тип команды ({statement}).")
     };
 
@@ -576,7 +588,7 @@ public class Translator
         if (fds.UserFunction.GenericsParameters != null) genericsParameters = $"<{fds.UserFunction.GenericsParameters}>";
         IStatement body = fds.UserFunction.Body;
 
-        builder.AppendLine($"public static {fds.UserFunction.ReturnType} {fds.Name}{genericsParameters} ({string.Join(", ", parameters)})");
+        builder.Append($"{fds.UserFunction.ReturnType} {fds.Name}{genericsParameters} ({string.Join(", ", parameters)})");
         if (body is not LambdaExpressionStatement)
         {
             builder.AppendLine(" {");
@@ -692,6 +704,38 @@ public class Translator
         for (int i = 0; i < parameters.Length; i++) parameters[i] = $"{les.Parameters[i].Item2} {les.Parameters[i].Item1}";
 
         return $"({string.Join(", ", parameters)}) => {TranslateExpression(les.Expression)};";
+    }
+
+    private static string TranslateSwitchStatement(SwitchStatement ss)
+    {
+        StringBuilder builder = new();
+
+        builder.AppendLine($"switch ({TranslateExpression(ss.Expression)}) {{");
+
+        foreach ((IExpression expression, IStatement statement) caseBlock in ss.Cases)
+        {
+            builder.AppendLine($"case {TranslateExpression(caseBlock.expression)}:");
+
+            if (caseBlock.statement is not BlockStatement bs) builder.AppendLine($"\t{TranslateCodePart(caseBlock.statement)}");
+            else foreach (IStatement statement in bs.Statements) builder.Append($"\t{TranslateCodePart(statement)}");
+
+            builder.AppendLine("break;");
+        }
+        if (ss.DefaultCase != null)
+        {
+            (IExpression expression, IStatement statement) defaultCase = ss.DefaultCase.Value;
+
+            builder.AppendLine("default:");
+
+            if (defaultCase.statement is not BlockStatement bs) builder.AppendLine($"\t{TranslateCodePart(defaultCase.statement)}");
+            else foreach (IStatement statement in bs.Statements) builder.Append($"\t{TranslateCodePart(statement)}");
+
+            builder.AppendLine("break;");
+        }
+
+        builder.AppendLine("}");
+
+        return builder.ToString();
     }
 
     public static string TranslateExpression(IExpression expression) => expression switch

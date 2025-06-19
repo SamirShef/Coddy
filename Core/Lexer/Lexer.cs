@@ -39,6 +39,7 @@ public class Lexer (string source)
         { "getter", TokenType.Getter },
         { "setter", TokenType.Setter },
         { "parent", TokenType.Parent },
+        { "switch", TokenType.Switch },
     };
 
     public IEnumerable<Token> Tokenize()
