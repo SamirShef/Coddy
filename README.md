@@ -1,16 +1,18 @@
 # Coddy
-**Текущая версия `Coddy` - v0.10.2**
+**Текущая версия `Coddy` - v0.10.3**
 
 `Coddy` - универсальный, высокоуровневый, статически типизированный язык программирования, созданный с опорой на синтаксис `Python`, `C++` и других языков. `Coddy` написан на высокоуровневом языке программирования `C#` с использованием нейросети `DeepSeek`. Язык `Coddy` транслируется в `C#` для осуществления компиляции по средствам компилятора `C#`. Официальный сайт проекта `Coddy` можно посетить [здесь](https://samirshef.github.io/Quantum-Games-Studio/Quantum%20Games%20Studio%20Documentations/Coddy%20Lang%20Pages/Main%20Page/html/index.html).
 
 # Состовляющие языка:
 * [Синтаксис](#синтаксис)
 * [Примитивные типы](#примитивные-типы)
+* [Служебные символы](#служебные-символы)
 * [Переменные](#переменные)
 * [Операторы](#операторы)
 * [Блоки](#блоки)
 * [Ветвление](#ветвление)
 * [Циклы](#циклы)
+* [Switch/case](#switchcase)
 * [Фунции](#функции)
 * [Массивы](#массивы)
 * [ООП (неполное)](#ооп-неполное)
@@ -49,6 +51,16 @@
 > [!IMPORTANT]
 > Примитивные типы данных не имеют встроенных методов и свойств.
 
+# Служебные символы
+Служебные символы в строках записываются с помощью токена `\` и последующим кодом символа.
+
+Служебные символы, которые поддерживает `Coddy`:
+* `\\` - символ `\`
+* `\t` - символ табуляции
+* `\n` - символ перевода на следующую строку
+* `\'` - символ `'`
+* `\"` - символ `"`
+
 # Переменные
 Объявление переменных осуществляется с помощью ключевого слова `let`, последующим именем переменной, разделительным символом `:`, последующим типом и (при необходимости) знаком `=` и инициализирующим выражением.
 > [!NOTE]
@@ -64,21 +76,25 @@
 
 Пример
 ```
-let a : int;  // ОК (имеет дефолтное значение 0)
-let b : int = 10;  // ОК
-let c : double = 10f;  // ОК
-let d : string = "Hello world!";  // ОК
-let e : string = 10;  // ОШИБКА ТИПА
-let f : int = 10.2f;  // ОШИБКА ТИПА
+func main() {
+	let a : int;  // ОК (имеет дефолтное значение 0)
+	let b : int = 10;  // ОК
+	let c : double = 10f;  // ОК
+	let d : string = "Hello world!";  // ОК
+	let e : string = 10;  // ОШИБКА ТИПА
+	let f : int = 10.2f;  // ОШИБКА ТИПА
+}
 ```
 Переменные можно использовать в выражениях
 > [!IMPORTANT]
 > Тип переменной, используемой в выражении, должен явно или неявно совпадать требуемому типу выражения.
 Пример
 ```
-let a : int = 10;
-let b : int = a;  // ОК
-let c : string = a;  // ОШИБКА ТИПА
+func main() {
+	let a : int = 10;
+	let b : int = a;  // ОК
+	let c : string = a;  // ОШИБКА ТИПА
+}
 ```
 
 # Операторы
@@ -131,7 +147,9 @@ let c : string = a;  // ОШИБКА ТИПА
 
 Пример
 ```Coddy
-let a : string = 1 == 1 ? "YES" : "NO";  // Сохранит значение "YES"
+func main() {
+	let a : string = 1 == 1 ? "YES" : "NO";  // Сохранит значение "YES"
+}
 ```
 
 # Блоки
@@ -142,12 +160,14 @@ let a : string = 1 == 1 ? "YES" : "NO";  // Сохранит значение "Y
 
 Пример
 ```Coddy
-let a : int = 10;
-if (a > 10) {  // ЛОЖЬ (выполнится код в else)
-  a = 0;
-}
-else {
-  a = -1;
+func main() {
+	let a : int = 10;
+	if (a > 10) {  // ЛОЖЬ (выполнится код в else)
+	  a = 0;
+	}
+	else {
+	  a = -1;
+	}
 }
 ```
 
@@ -161,9 +181,11 @@ else {
 
 Пример
 ```Coddy
-let a : int;
-while (a < 10) {
-  a++;
+func main() {
+	let a : int;
+	while (a < 10) {
+	  a++;
+	}
 }
 ```
 
@@ -172,10 +194,12 @@ while (a < 10) {
 
 Пример
 ```Coddy
-let a : int;
-do {
-  a++;
-} while (a < 10);
+func main() {
+	let a : int;
+	do {
+	  a++;
+	} while (a < 10);
+}
 ```
 
 ### Цикл for
@@ -183,9 +207,28 @@ do {
 
 Пример
 ```Coddy
-let a : int;
-for (i : int = 0 : i < 10 : i++) {
-  a = i * i;
+func main() {
+	let a : int;
+	for (i : int = 0 : i < 10 : i++) {
+	  a = i * i;
+	}
+}
+```
+
+# Switch/case
+`Coddy` с версии **v0.10.3** поддерживает оператор `switch`. `switch` объявляется с помощью ключевого слова `switch`, последующим именем переменной/поля в круглых скобках `()` и блоком **case-операторов**. Case-оператор объявляются с помощью выражения, с которым будет сравниваться переданная в `switch` переменная, токен `=>` и оператор (или блок кода). Если необходимо задать значение по умолчанию, то вместо выражения в **case-операторе** необходимо использовать `_`.
+
+Пример
+```Coddy
+func main() {
+	print("Enter integer number: ");
+	let a : int = to_int(input());
+	
+	switch (a) {
+		2 => println(a * 2);
+		10 => println(a * a * 10);
+		_ => println("Other");
+	}
 }
 ```
 
@@ -215,7 +258,7 @@ func b () {  // Декларация
   a = 10;
 }
 
-b();  // Вызов
+func main() => b();  // Вызов
 ```
 
 ### Свойства type-функций
@@ -229,7 +272,9 @@ func sum : int(a : int, b : int) {  // Декларация
   return a + b;
 }
 
-let a : int = sum(1, 2);  // Использование. Сохранит 3
+func main() {
+	let a : int = sum(1, 2);  // Использование. Сохранит 3
+}
 ```
 
 > [!CAUTION]
@@ -256,11 +301,13 @@ let a : int = sum(1, 2);  // Использование. Сохранит 3
 
 Пример
 ```Coddy
-let array : int[];  // ОК
-let array2 : int[4];  // ОК
-let array3 : int[] = [1, 2, 3, 4] : int;  // ОК
-let array4 : int[4] = [1, 2, 3] : int;  // ОШИБКА (кол-во переданных элементов не совпадает с заданным размером)
-let array5 : int[4] = [1, 2, 3, 4];  // ОШИБКА (не указан тип после элементов массива)
+func main() {
+	let array : int[];  // ОК
+	let array2 : int[4];  // ОК
+	let array3 : int[] = [1, 2, 3, 4] : int;  // ОК
+	let array4 : int[4] = [1, 2, 3] : int;  // ОШИБКА (кол-во переданных элементов не совпадает с заданным размером)
+	let array5 : int[4] = [1, 2, 3, 4];  // ОШИБКА (не указан тип после элементов массива)
+}
 ```
 
 > [!NOTE]
@@ -347,7 +394,9 @@ class Person {
   }
 }
 
-let person : Person = new Person("Alex", 15);
+func main() {
+	let person : Person = new Person("Alex", 15);
+}
 ```
 
 ### Вызовы членов класса
@@ -373,10 +422,12 @@ class Person {
   }
 }
 
-let person : Person = new Person("Alex", 15);
-let age : int = person.getAge();  // ОК
-let name : string = person.name;  // ОШИБКА УРОВНЯ ЗАЩИТЫ
-person.printName();  // ОК
+func main() {
+	let person : Person = new Person("Alex", 15);
+	let age : int = person.getAge();  // ОК
+	let name : string = person.name;  // ОШИБКА УРОВНЯ ЗАЩИТЫ
+	person.printName();  // ОК
+}
 ```
 
 ### Статика
@@ -391,10 +442,12 @@ static class Person {
   }
 }
 
-println(Person.Name);
-println(Person.GetAge());
-Person.Name = "Nikita";
-println(Person.Name);
+func main() {
+	println(Person.Name);
+	println(Person.GetAge());
+	Person.Name = "Nikita";
+	println(Person.Name);
+}
 ```
 
 ### Интерфейсы
@@ -442,10 +495,12 @@ class C :: A {
   }
 }
 
-B b = new B();
-println(b.toString());  // Выведет "Object"
-C c = new C();
-println(c.toString());  // Выведет "Hello, world!"
+func main() {
+	B b = new B();
+	println(b.toString());  // Выведет "Object"
+	C c = new C();
+	println(c.toString());  // Выведет "Hello, world!"
+}
 ```
 
 ### Свойства
@@ -461,9 +516,11 @@ class Test {
 	public let field2(getter, setter) : int;
 }
 
-let test : Test = new Test();
-println(test.field);	// ОК
-test.field = 10;	// ОШИБКА (не указано свойство setter)
+func main() {
+	let test : Test = new Test();
+	println(test.field);	// ОК
+	test.field = 10;	// ОШИБКА (не указано свойство setter)
+}
 ```
 
 ### Вызов базовых членов
@@ -485,7 +542,9 @@ class B :: A {
 	}
 }
 
-let test : B = new B();	// Выведет "Hello, Nikita!" и на следующей строке "0"
+func main() {
+	let test : B = new B();	// Выведет "Hello, Nikita!" и на следующей строке "0"
+}
 ```
 
 # Перечисления
@@ -497,7 +556,9 @@ enum Color {
   Red, Blue, Green
 }
 
-let color : Color = Color.Red;
+func main() {
+	let color : Color = Color.Red;
+}
 ```
 
 ```Coddy
@@ -507,7 +568,9 @@ class Color {
   }
 }
 
-let color : Color.ColorEnum = Color.ColorEnum.Red;
+func main() {
+	let color : Color.ColorEnum = Color.ColorEnum.Red;
+}
 ```
 
 > [!NOTE]
@@ -527,7 +590,7 @@ let color : Color.ColorEnum = Color.ColorEnum.Red;
 ```Coddy
 include "math.cd";
 
-println(math.sqrt(25));  // Встроенный метод статического класса math
+func main() => println(Math.sqrt(25));  // Встроенный метод статического класса math
 ```
 
 # Импорт файлов
@@ -548,7 +611,7 @@ example.cd
 ```Coddy
 use "C:/User/User/Desktop/test.cd";
 
-Test.print("Hello, world!");  // Выведет в консоль "Hello, world"
+func main() => Test.print("Hello, world!");  // Выведет в консоль "Hello, world"
 ```
 
 # Лямбда выражения
@@ -556,7 +619,7 @@ Test.print("Hello, world!");  // Выведет в консоль "Hello, world"
 
 Пример
 ```Coddy
-hello("Nikita");	// Выведет Hello, Nikita!
+func main() => hello("Nikita");	// Выведет Hello, Nikita!
 
 func hello(name : string) => println("Hello, " + name + "!");
 ```
@@ -570,11 +633,13 @@ func validateIndex(index : int) {
   if (index < 0) throw new Exception("Индекс не может быть отрицательным");
 }
 
-try {
-  index : int = -1;
-  validateIndex(index);
-} catch (ex : Exception) {
-  println("Было вызывано исключение");
+func main() {
+	try {
+	  index : int = -1;
+	  validateIndex(index);
+	} catch (ex : Exception) {
+	  println("Было вызывано исключение");
+	}
 }
 ```
 
@@ -608,7 +673,9 @@ class MyList<T> {  // Объявление обобщённого типа
   }
 }
 
-let list : MyList<int> = new MyList<int>();
+func main() {
+	let list : MyList<int> = new MyList<int>();
+}
 ```
 
 # Поддержка
