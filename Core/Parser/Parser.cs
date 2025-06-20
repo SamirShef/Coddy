@@ -843,7 +843,7 @@ public class Parser (List<Token> tokens)
         Consume(TokenType.LBrace, "Отсутствует токен начала блока операторов '{'.");
         while (!Match(TokenType.RBrace))
         {
-            IExpression caseExpression = ParsePrimary();
+            IExpression caseExpression = ParseExpression();
             Consume(TokenType.Lambda, "Отсутствует токен перехода к блоку операторов '=>'.");
             IStatement caseBlock;
             if (!Match(TokenType.LBrace)) caseBlock = ParseStatement();
@@ -1211,6 +1211,9 @@ public class Parser (List<Token> tokens)
             case TokenType.BooleanLiteral:
                 pos++;
                 return new LiteralExpression(new BoolValue(bool.Parse(token.Value)));
+            case TokenType.CharLiteral:
+                pos++;
+                return new LiteralExpression(new CharValue(ParseCharLiteral(token.Value)));
             case TokenType.Identifier:
                 pos++;
                 IExpression expression;
@@ -1225,6 +1228,15 @@ public class Parser (List<Token> tokens)
             default:
                 throw new Exception($"Неожиданный токен: '{token}'.");
         }
+    }
+
+    private string ParseCharLiteral(string value)
+    {
+        if (value.Length == 1) return value;
+
+        if (value.Length == 2 && value[0] == '\\') return value;
+
+        throw new Exception("Символьный литерал должен быть одним символом или допустимой escape-последовательностью.");
     }
 
     private IExpression ParseFieldChain(IExpression start)

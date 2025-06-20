@@ -26,5 +26,5 @@ public interface IValue
 
 public enum TypeValue
 {
-    Int, Float, Double, Decimal, Bool, String, Array, Void, Class, Enum,
+    Int, Float, Double, Decimal, String, Bool, Char, Array, Void, Class, Enum,
 }

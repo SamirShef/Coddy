@@ -71,9 +71,15 @@ public class Lexer (string source)
                 continue;
             }
 
-            if (source[pos] == '\"' || source[pos] == '\'')
+            if (source[pos] == '\"')
             {
-                yield return ReadStringLiteral(source[pos]);
+                yield return ReadStringLiteral();
+                continue;
+            }
+
+            if (source[pos] == '\'')
+            {
+                yield return ReadCharLiteral();
                 continue;
             }
 
@@ -331,14 +337,14 @@ public class Lexer (string source)
         };
     }
 
-    private Token ReadStringLiteral(char closeMark)
+    private Token ReadStringLiteral()
     {
         StringBuilder builder = new();
         pos++;
 
-        while (source[pos] != closeMark)
+        while (source[pos] != '\"' || source[pos - 1] == '\\')
         {
-            if (source[pos] == '\0') throw new Exception($"Требуется закрывающая кавычка строкового литерала: {closeMark}.");
+            if (source[pos] == '\0') throw new Exception($"Требуется закрывающая кавычка строкового литерала.");
 
             builder.Append(source[pos++]);
         }
@@ -346,6 +352,23 @@ public class Lexer (string source)
         pos++;
 
         return new Token(TokenType.StringLiteral, builder.ToString());
+    }
+
+    private Token ReadCharLiteral()
+    {
+        StringBuilder builder = new();
+        pos++;
+
+        while (source[pos] != '\'' || source[pos - 1] == '\\')
+        {
+            if (source[pos] == '\0') throw new Exception($"Требуется закрывающая кавычка символьного литерала.");
+
+            builder.Append(source[pos++]);
+        }
+
+        pos++;
+
+        return new Token(TokenType.CharLiteral, builder.ToString());
     }
 
     private void ReadComment()

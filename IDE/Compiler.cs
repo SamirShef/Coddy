@@ -8,14 +8,14 @@ namespace Coddy.IDE;
 
 public class Compiler
 {
-    public static void Execute(string source)
+    public static void Execute(string source, string currentFilePath)
     {
         Lexer lexer = new(source);
 
         Parser parser = new([.. lexer.Tokenize()]);
         List<IStatement> statements = parser.Parse();
         Console.WriteLine("Трансляция в C#...");
-        string translatedCode = Translator.Translate(statements);
+        string translatedCode = Translator.Translate(statements, currentFilePath);
 
         string generatedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Generated");
         if (!Directory.Exists(generatedPath)) Directory.CreateDirectory(generatedPath);

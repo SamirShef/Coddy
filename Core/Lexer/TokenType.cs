@@ -8,7 +8,7 @@ public enum TokenType
 
     Private, Public, New, This, Constructor, Static, Virtual, Override, Enum, Interface, Getter, Setter, Lambda, Parent,
 
-    IntLiteral, FloatLiteral, DoubleLiteral, DecimalLiteral, StringLiteral, BooleanLiteral,
+    IntLiteral, FloatLiteral, DoubleLiteral, DecimalLiteral, StringLiteral, BooleanLiteral, CharLiteral,
 
     Plus, Minus, Multiply, Divide, Modulo, Assign,
     PlusAssign, MinusAssign, MultiplyAssign, DivideAssign, ModuloAssign,

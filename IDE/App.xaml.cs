@@ -41,7 +41,7 @@ namespace Coddy.IDE
                         Console.SetError(new System.IO.StreamWriter(Console.OpenStandardError(), Encoding.UTF8) { AutoFlush = true });
 
                         string code = System.IO.File.ReadAllText(filePath);
-                        Compiler.Execute(code);
+                        Compiler.Execute(code, filePath);
 
                         Console.WriteLine("\nНажмите любую клавишу для продолжения...");
                         Console.ReadKey();

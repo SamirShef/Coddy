@@ -11,10 +11,12 @@ namespace Core.Translator;
 /// </summary>
 public class Translator
 {
+    private static string currentFilePath;
     private static ImportManager? importManager;
 
-    public static string Translate(List<IStatement> statements)
+    public static string Translate(List<IStatement> statements, string currentFilePath)
     {
+        Translator.currentFilePath = currentFilePath;
         importManager = new ImportManager(new Translator());
         List<IStatement> statementsInMain = [];
         List<IStatement> statementsInGlobalClass = [];
@@ -242,6 +244,7 @@ public class Translator
             "Decimal" => $"{value.ToString()!.Replace(",", ".")}m",
             "String" => $"\"{value}\"",
             "Boolean" => value.ToString()!.ToLower(),
+            "Char" => $"\'{value}\'",
             _ => value.ToString() ?? "null"
         };
     }
@@ -274,6 +277,7 @@ public class Translator
             "Decimal" => "decimal",
             "String" => "string",
             "Boolean" => "bool",
+            "Char" => "char",
             "Void" => "void",
             "Object" => "object",
             _ => type.Name
@@ -282,7 +286,9 @@ public class Translator
 
     private static string TranslateUseStatement(UseStatement us)
     {
-        string filePath = TranslateExpression(us.FilePathExpression).TrimEnd('\"').TrimStart('\"');
+        string filePath = $"{Directory.GetParent(currentFilePath)}/{TranslateExpression(us.FilePathExpression).TrimEnd('\"').TrimStart('\"')}";
+
+        if (filePath == null) throw new Exception($"Путь {filePath} является некорректным.");
 
         if (!File.Exists(filePath)) throw new Exception($"Файл по пути {filePath} не существует.");
 
@@ -501,10 +507,6 @@ public class Translator
         {
             StringBuilder initBuilder = new();
             initBuilder.Append($"new {string.Join(".", ads.TypeExpressions)}[{sizeString}]");
-            /*ads.TypeExpressions = [.. ads.TypeExpressions.Select(type => GetDefaultValueByStringTypeValue(type))];
-
-            initBuilder.Append(string.Join(".", ads.TypeExpressions));*/
-            //initBuilder.Append(" }");
 
             expression = initBuilder.ToString();
         }
@@ -766,6 +768,7 @@ public class Translator
 
         if (le.Value is StringValue) return $"\"{translatedExpression}\"";
         if (le.Value is BoolValue) return translatedExpression.ToLower();
+        if (le.Value is CharValue) return $"\'{translatedExpression}\'";
 
         return $"{translatedExpression.Replace(",", ".")}{GetDefaultSuffixByType(le.Value.Type)}";
     }
@@ -869,6 +872,7 @@ public class Translator
             "decimal" => "0m",
             "string" => "\"\"",
             "bool" => "false",
+            "char" => "\'\0\'",
             _ => type/*throw new Exception($"Невозможно указать стандартное значение типу {type}")*/
         };
     }
@@ -896,17 +900,9 @@ public class Translator
     {
         if (type.Namespace == null) return type.Name;
         
-        // Если тип находится в пространстве имен System, используем полный путь
-        if (type.Namespace.StartsWith("System."))
-        {
-            return type.FullName ?? type.Name;
-        }
+        if (type.Namespace.StartsWith("System.")) return type.FullName ?? type.Name;
         
-        // Для пользовательских типов из библиотеки используем полный путь
-        if (type.Assembly != typeof(object).Assembly)
-        {
-            return type.FullName ?? type.Name;
-        }
+        if (type.Assembly != typeof(object).Assembly) return type.FullName ?? type.Name;
         
         return type.Name;
     }
