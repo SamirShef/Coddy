@@ -66,7 +66,7 @@ public class Translator
 
     private static bool CodePartInCSharpMain(IStatement statement) => statement switch
     {
-        VariableDeclarationStatement or FunctionDeclarationStatement => true,
+        VariableDeclarationStatement or ArrayDeclarationStatement or FunctionDeclarationStatement => true,
         _ => false
     };
 
