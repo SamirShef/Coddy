@@ -13,7 +13,7 @@ public enum TokenType
     Plus, Minus, Multiply, Divide, Modulo, Assign,
     PlusAssign, MinusAssign, MultiplyAssign, DivideAssign, ModuloAssign,
     Increment, Decrement, Greater, Less, GreaterEqual, LessEqual,
-    Equals, Not, NotEquals, LeftShift, RightShift, LogicalRightShift,
+    Equals, Not, NotEquals, LeftShift, RightShift, LogicalRightShift, Is,
 
     And, Or,
 

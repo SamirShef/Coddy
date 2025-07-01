@@ -33,7 +33,7 @@ namespace Coddy.IDE
                     try
                     {
                         AllocConsole();
-                        var consoleWindow = GetConsoleWindow();
+                        nint consoleWindow = GetConsoleWindow();
                         ShowWindow(consoleWindow, SW_SHOW);
 
                         Console.OutputEncoding = Encoding.UTF8;
@@ -51,7 +51,7 @@ namespace Coddy.IDE
                     }
                     catch (Exception ex)
                     {
-                        var consoleWindow = GetConsoleWindow();
+                        nint consoleWindow = GetConsoleWindow();
                         ShowWindow(consoleWindow, SW_HIDE);
                         FreeConsole();
 

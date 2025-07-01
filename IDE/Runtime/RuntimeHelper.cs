@@ -61,6 +61,32 @@ public static class RuntimeHelper
         return bool.Parse(sv);
     }
 
+    public static char ToChar(object arg)
+    {
+        if (arg == null) throw new ArgumentNullException(nameof(arg), "Объект не может быть null.");
+
+        if (arg is char charValue) return charValue;
+
+        if (arg is string stringValue)
+        {
+            if (stringValue.Length == 1) return stringValue[0];
+            else throw new ArgumentException("Строка должна содержать ровно один символ.", nameof(arg));
+        }
+
+        if (arg is IConvertible convertible)
+        {
+            try
+            {
+                int intValue = convertible.ToInt32(null);
+                if (intValue >= 0 && intValue <= char.MaxValue) return (char)intValue;
+                else throw new ArgumentOutOfRangeException(nameof(arg), "Число вне допустимого диапазона для char (0–65535).");
+            }
+            catch (OverflowException) { throw new ArgumentOutOfRangeException(nameof(arg), "Число вне допустимого диапазона для char (0–65535)."); }
+        }
+
+        throw new InvalidCastException($"Невозможно преобразовать {arg.GetType().Name} в char.");
+    }
+
     public static string GetType(object arg) => arg.GetType().Name;
 
     public static int GetLen(object arg)

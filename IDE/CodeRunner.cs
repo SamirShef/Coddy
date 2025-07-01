@@ -36,7 +36,11 @@ namespace Coddy.IDE
                 Console.WriteLine($"Выполнение\n{new string('-', 10)}");
                 mainMethod.Invoke(null, null);
             }
-            catch (Exception ex) { throw new Exception($"Ошибка при выполнении кода: {ex.Message}", ex); }
+            catch (Exception ex)
+            {
+                if (ex is TargetInvocationException tie && tie.InnerException != null) throw new Exception($"Ошибка при выполнении кода: {tie.InnerException.GetType().Name}: {tie.InnerException.Message.Replace("__Program__.", "")}", tie.InnerException);
+                throw new Exception($"Ошибка при выполнении кода: {ex.GetType().Name}: {ex.Message.Replace("__Program__.", "")}", ex);
+            }
         }
     }
 }

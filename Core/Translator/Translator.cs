@@ -38,10 +38,7 @@ public class Translator
             if (statement is IncludeStatement includeStatement)
             {
                 string importCode = importManager.ProcessImport(includeStatement);
-                if (!string.IsNullOrEmpty(importCode))
-                {
-                    builder.AppendLine(importCode);
-                }
+                if (!string.IsNullOrEmpty(importCode)) builder.AppendLine(importCode);
             }
         }
 
@@ -145,6 +142,7 @@ public class Translator
             }
             else if (statement is ClassDeclarationStatement classDeclaration) builder.AppendLine(TranslateClassDeclarationStatement(classDeclaration));
             else if (statement is EnumDeclarationStatement enumDeclaration) builder.AppendLine(TranslateEnumDeclarationStatement(enumDeclaration));
+            else if (statement is InterfaceDeclarationStatement interfaceDeclaration) builder.AppendLine(TranslateInterfaceDeclarationStatement(interfaceDeclaration));
         }
 
         return builder.ToString();
@@ -286,9 +284,21 @@ public class Translator
 
     private static string TranslateUseStatement(UseStatement us)
     {
-        string filePath = $"{Directory.GetParent(currentFilePath)}/{TranslateExpression(us.FilePathExpression).TrimEnd('\"').TrimStart('\"')}";
+        string filePath = $"{Directory.GetParent(currentFilePath)}/{TranslateExpression(us.FilePathExpression).TrimEnd('"').TrimStart('"')}";
 
         if (filePath == null) throw new Exception($"Путь {filePath} является некорректным.");
+
+        if (filePath.EndsWith('*'))
+        {
+            string dirPath = Path.GetDirectoryName(filePath)!;
+            if (!Directory.Exists(dirPath)) throw new Exception($"Директория по пути {dirPath} не существует.");
+            var files = Directory.GetFiles(dirPath, "*.cd");
+            if (files.Length == 0) throw new Exception($"В директории {dirPath} не найдено файлов с расширением .cd");
+            StringBuilder builder = new();
+            foreach (var file in files) builder.AppendLine(TranslateCoddyLibrary(file));
+
+            return builder.ToString();
+        }
 
         if (!File.Exists(filePath)) throw new Exception($"Файл по пути {filePath} не существует.");
 
@@ -332,7 +342,7 @@ public class Translator
             builder.Append("} ");
         }
         if (fds.Expression != null) builder.Append($"= {TranslateExpression(fds.Expression)}");
-        if (!fds.HasGetter && !fds.HasSetter) builder.Append(';');
+        if (!fds.HasGetter && !fds.HasSetter || fds.Expression != null) builder.Append(';');
 
         return builder.ToString();
     }
@@ -625,6 +635,7 @@ public class Translator
             "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)});",
             "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)});",
             "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)});",
+            "to_char" => $"RuntimeHelper.ToChar({string.Join(", ", args)});",
             "len" => $"RuntimeHelper.GetLen({string.Join(", ", args)});",
             "type" => $"RuntimeHelper.GetType({string.Join(", ", args)});",
             _ => $"{fcs.Name}({string.Join(", ", args)});"
@@ -658,6 +669,23 @@ public class Translator
         builder.Append($"public interface {ids.Name} ");
         if (ids.Implements.Count > 0) builder.Append($": {string.Join(", ", ids.Implements)}");
         builder.AppendLine("{");
+
+        foreach ((string name, string type, bool hasGetter, bool hasSetter, bool isConstant, IExpression? initializationExpression) field in ids.Fields)
+        {
+            if (field.isConstant) builder.AppendLine($"const {field.type} {field.name} = {TranslateExpression(field.initializationExpression!)};");
+            else
+            {
+                builder.Append($"{field.type} {field.name}");
+                if (field.hasGetter || field.hasSetter)
+                {
+                    builder.Append("{ ");
+                    if (field.hasGetter) builder.Append("get; ");
+                    if (field.hasSetter) builder.Append("set; ");
+                    builder.Append("} ");
+                }
+                builder.AppendLine("");
+            }
+        }
 
         foreach ((string, string, List<(string, string)>) method in ids.Methods)
         {
@@ -759,6 +787,7 @@ public class Translator
         FieldExpression fe => TranslateFieldExpression(fe),
         MethodCallExpression mce => TranslateMethodCallExpression(mce),
         LambdaExpression le => TranslateLambdaExpression(le),
+        ThrowExpression te => $"throw {TranslateExpression(te.Expression)}",
         _ => throw new Exception($"Невозможно обработать данный тип выражения ({expression}).")
     };
 
@@ -818,6 +847,7 @@ public class Translator
             "to_decimal" => $"RuntimeHelper.ToDecimal({string.Join(", ", args)})",
             "to_string" => $"RuntimeHelper.ToString({string.Join(", ", args)})",
             "to_boolean" => $"RuntimeHelper.ToBoolean({string.Join(", ", args)})",
+            "to_char" => $"RuntimeHelper.ToChar({string.Join(", ", args)})",
             "len" => $"RuntimeHelper.GetLen({string.Join(", ", args)})",
             "type" => $"RuntimeHelper.GetType({string.Join(", ", args)})",
             _ => $"{fce.Name}({string.Join(", ", args)})"
@@ -873,13 +903,12 @@ public class Translator
             "string" => "\"\"",
             "bool" => "false",
             "char" => "\'\0\'",
-            _ => type/*throw new Exception($"Невозможно указать стандартное значение типу {type}")*/
+            _ => type
         };
     }
 
     private static string EscapeCSharpKeyword(string identifier)
     {
-        // Список зарезервированных слов C#
         var keywords = new HashSet<string>
         {
             "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
