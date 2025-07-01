@@ -1,0 +1,26 @@
+﻿include "random.cd";
+
+let attemps : int = 5;
+let isWon : boolean = false;
+
+func main() {
+	let randomNumber : int = Random.range(0, 10);
+	println("I made a wish for the integer number from 0 to 10.");
+	
+	do {
+		print("You have " + attemps + " attemp(s). Enter your integer number from 0 to 10: ");
+		let number : int = to_int(input());
+		
+		if (number == randomNumber) {
+			isWon = true;
+			break;
+		}
+		else if (number > randomNumber) print("Your number is bigger. ");
+		else print("Your number is smaller. ");
+		
+		attemps--;
+	} while (attemps > 0);
+	
+	if (isWon) println("You win! Number is " + randomNumber);
+	else println("You lose! Number is " + randomNumber);
+}
