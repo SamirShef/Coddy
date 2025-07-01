@@ -1,9 +1,12 @@
 include "DllImports/array.dll";  // Native library for working with array
 
-let a : int[] = [2, 1, 5, 2, 7, 0];
-printArray(a);
-array.sort(a);
-printArray(a);
+func main() {
+	let a : int[] = [2, 1, 5, 2, 7, 0];
+
+	printArray(a);
+	array.sort(a);
+	printArray(a);
+}
 
 func printArray(a : int[]) {
 	let str : string = "[";
