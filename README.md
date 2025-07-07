@@ -483,7 +483,7 @@ class B :: A {...}
 Пример
 ```Coddy
 class A {
-  public virtual func toString : string() {
+  public virt func toString : string() {
     return "Object";
   }
 }
