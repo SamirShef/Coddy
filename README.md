@@ -86,8 +86,8 @@ func main() {
 ```
 func main() {
   let a : int = 10;
-	let b : int = a;  // ОК
-	let c : string = a;  // ОШИБКА ТИПА
+  let b : int = a;  // ОК
+  let c : string = a;  // ОШИБКА ТИПА
 }
 ```
 
@@ -143,7 +143,7 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	let a : string = 1 == 1 ? "YES" : "NO";  // Сохранит значение "YES"
+  let a : string = 1 == 1 ? "YES" : "NO";  // Сохранит значение "YES"
 }
 ```
 
@@ -156,13 +156,13 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	let a : int = 10;
-	if (a > 10) {  // ЛОЖЬ (выполнится код в else)
-	  a = 0;
-	}
-	else {
-	  a = -1;
-	}
+  let a : int = 10;
+  if (a > 10) {  // ЛОЖЬ (выполнится код в else)
+    a = 0;
+  }
+  else {
+    a = -1;
+  }
 }
 ```
 
@@ -177,10 +177,10 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	let a : int;
-	while (a < 10) {
-	  a++;
-	}
+  let a : int;
+  while (a < 10) {
+    a++;
+  }
 }
 ```
 
@@ -190,10 +190,10 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	let a : int;
-	do {
-	  a++;
-	} while (a < 10);
+  let a : int;
+  do {
+    a++;
+  } while (a < 10);
 }
 ```
 
@@ -203,10 +203,10 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	let a : int;
-	for (i : int = 0 : i < 10 : i++) {
-	  a = i * i;
-	}
+  let a : int;
+  for (i : int = 0 : i < 10 : i++) {
+    a = i * i;
+  }
 }
 ```
 
@@ -216,14 +216,14 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	print("Enter integer number: ");
-	let a : int = to_int(input());
-	
-	switch (a) {
-		2 => println(a * 2);
-		10 => println(a * a * 10);
-		_ => println("Other");
-	}
+  print("Enter integer number: ");
+  let a : int = to_int(input());
+  
+  switch (a) {
+    2 => println(a * 2);
+    10 => println(a * a * 10);
+    _ => println("Other");
+  }
 }
 ```
 
@@ -268,7 +268,7 @@ func sum : int(a : int, b : int) {  // Декларация
 }
 
 func main() {
-	let a : int = sum(1, 2);  // Использование. Сохранит 3
+  let a : int = sum(1, 2);  // Использование. Сохранит 3
 }
 ```
 
@@ -297,11 +297,11 @@ func main() {
 Пример
 ```Coddy
 func main() {
-	let array : int[];  // ОК
-	let array2 : int[4];  // ОК
-	let array3 : int[] = [1, 2, 3, 4] : int;  // ОК
-	let array4 : int[4] = [1, 2, 3] : int;  // ОШИБКА (кол-во переданных элементов не совпадает с заданным размером)
-	let array5 : int[4] = [1, 2, 3, 4];  // ОШИБКА (не указан тип после элементов массива)
+  let array : int[];  // ОК
+  let array2 : int[4];  // ОК
+  let array3 : int[] = [1, 2, 3, 4] : int;  // ОК
+  let array4 : int[4] = [1, 2, 3] : int;  // ОШИБКА (кол-во переданных элементов не совпадает с заданным размером)
+  let array5 : int[4] = [1, 2, 3, 4];  // ОШИБКА (не указан тип после элементов массива)
 }
 ```
 
@@ -393,7 +393,7 @@ class Person {
 }
 
 func main() {
-	let person : Person = new Person("Alex", 15);
+  let person : Person = new Person("Alex", 15);
 }
 ```
 
@@ -421,10 +421,10 @@ class Person {
 }
 
 func main() {
-	let person : Person = new Person("Alex", 15);
-	let age : int = person.getAge();  // ОК
-	let name : string = person.name;  // ОШИБКА УРОВНЯ ЗАЩИТЫ
-	person.printName();  // ОК
+  let person : Person = new Person("Alex", 15);
+  let age : int = person.getAge();  // ОК
+  let name : string = person.name;  // ОШИБКА УРОВНЯ ЗАЩИТЫ
+  person.printName();  // ОК
 }
 ```
 
@@ -441,10 +441,10 @@ static class Person {
 }
 
 func main() {
-	println(Person.Name);
-	println(Person.GetAge());
-	Person.Name = "Nikita";
-	println(Person.Name);
+  println(Person.Name);
+  println(Person.GetAge());
+  Person.Name = "Nikita";
+  println(Person.Name);
 }
 ```
 
@@ -454,13 +454,13 @@ func main() {
 Пример
 ```Coddy
 interface IValue {
-	let field(getter) : int;
+  let field(getter) : int;
   func getValue : int();
 }
 
 class Value {
   public interface IValue2 {
-		let field(getter) : int = 123;
+    let field(getter) : int = 123;
     func getValue : string();
   }
 }
@@ -496,10 +496,10 @@ class C :: A {
 }
 
 func main() {
-	B b = new B();
-	println(b.toString());  // Выведет "Object"
-	C c = new C();
-	println(c.toString());  // Выведет "Hello, world!"
+  B b = new B();
+  println(b.toString());  // Выведет "Object"
+  C c = new C();
+  println(c.toString());  // Выведет "Hello, world!"
 }
 ```
 
@@ -512,14 +512,14 @@ func main() {
 Пример
 ```Coddy
 class Test {
-	public let field(getter) : int;
-	public let field2(getter, setter) : int;
+  public let field(getter) : int;
+  public let field2(getter, setter) : int;
 }
 
 func main() {
-	let test : Test = new Test();
-	println(test.field);	// ОК
-	test.field = 10;	// ОШИБКА (не указано свойство setter)
+  let test : Test = new Test();
+  println(test.field);	// ОК
+  test.field = 10;	// ОШИБКА (не указано свойство setter)
 }
 ```
 
@@ -529,21 +529,21 @@ func main() {
 Пример
 ```Coddy
 class A {
-	public let field : int;
+  public let field : int;
 
-	constructor(name : string) {
-		println("Hello, " + name + "!");
-	}
+  constructor(name : string) {
+    println("Hello, " + name + "!");
+  }
 }
 
 class B :: A {
-	constructor() : parent("Nikita") {
-		println(parent.field);
-	}
+  constructor() : parent("Nikita") {
+    println(parent.field);
+  }
 }
 
 func main() {
-	let test : B = new B();	// Выведет "Hello, Nikita!" и на следующей строке "0"
+  let test : B = new B();	// Выведет "Hello, Nikita!" и на следующей строке "0"
 }
 ```
 
@@ -572,7 +572,7 @@ enum Color {
 }
 
 func main() {
-	let color : Color = Color.Red;
+  let color : Color = Color.Red;
 }
 ```
 
@@ -584,7 +584,7 @@ class Color {
 }
 
 func main() {
-	let color : Color.ColorEnum = Color.ColorEnum.Red;
+  let color : Color.ColorEnum = Color.ColorEnum.Red;
 }
 ```
 
@@ -649,12 +649,12 @@ func validateIndex(index : int) {
 }
 
 func main() {
-	try {
-	  index : int = -1;
-	  validateIndex(index);
-	} catch (ex : Exception) {
-	  println("Было вызывано исключение");
-	}
+  try {
+    index : int = -1;
+    validateIndex(index);
+  } catch (ex : Exception) {
+    println("Было вызывано исключение");
+  }
 }
 ```
 
@@ -675,21 +675,21 @@ class MyList<T> {  // Объявление обобщённого типа
 
   public func add(value : T) {
     let newValues : T[len(_values) + 1];
-		for (i : int : i < len(_values) : i++) newValues[i] = _values[i];
-		newValues[length()] = value;
+    for (i : int : i < len(_values) : i++) newValues[i] = _values[i];
+    newValues[length()] = value;
 
-		_values = newValues;
+    _values = newValues;
   }
 
   public func get : T (index : int) {
     if (index >= len(_values) || index < 0) throw new Exception("Индекс вышел за пределы списка: " + to_string(index));
 
-		return _values[index];
+    return _values[index];
   }
 }
 
 func main() {
-	let list : MyList<int> = new MyList<int>();
+  let list : MyList<int> = new MyList<int>();
 }
 ```
 
