@@ -55,11 +55,23 @@ namespace Coddy.IDE
             CommandBindings.Add(new CommandBinding(runCommand, (s, e) => btnRun_Click(s, e)));
         }
 
+        private static string GetSyntaxFilePath()
+        {
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string syntaxDir = Path.Combine(appData, "Quantum Games Studio", "Coddy IDE", "Syntax");
+            Directory.CreateDirectory(syntaxDir);
+            string syntaxFile = Path.Combine(syntaxDir, "CoddySyntax.xshd");
+            string installSyntaxFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Syntax", "CoddySyntax.xshd");
+            if (File.Exists(installSyntaxFile)) File.Copy(installSyntaxFile, syntaxFile, true);
+            
+            return syntaxFile;
+        }
+
         private void LoadSyntaxHighlighting()
         {
             try
             {
-                using (Stream s = new FileStream(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Syntax", "CoddySyntax.xshd"), FileMode.Open))
+                using (Stream s = new FileStream(GetSyntaxFilePath(), FileMode.Open))
                 {
                     using (XmlTextReader reader = new(s))
                     {

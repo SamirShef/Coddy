@@ -17,9 +17,7 @@ public class Compiler
         Console.WriteLine("Трансляция в C#...");
         string translatedCode = Translator.Translate(statements, currentFilePath);
 
-        string generatedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Generated");
-        if (!Directory.Exists(generatedPath)) Directory.CreateDirectory(generatedPath);
-
+        string generatedPath = GetGeneratedCodeDirectory();
         string programPath = Path.Combine(generatedPath, "Program.cs");
         File.WriteAllText(programPath, translatedCode);
         Console.WriteLine("Трансляция завершена. Выполнение...");
@@ -29,5 +27,14 @@ public class Compiler
         Console.WriteLine($"{new string('-', 10)}\nВыполнение завершено");
 
         File.Delete(programPath);
+    }
+
+    private static string GetGeneratedCodeDirectory()
+    {
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string genDir = Path.Combine(appData, "Quantum Games Studio", "Coddy IDE", "Generated");
+        Directory.CreateDirectory(genDir);
+
+        return genDir;
     }
 }

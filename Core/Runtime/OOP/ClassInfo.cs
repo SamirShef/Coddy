@@ -12,7 +12,6 @@ public class ClassInfo(string name)
 
     public void SetConstructor(UserFunction constructor)
     {
-        if (Constructor != null) throw new Exception($"Объявление невозможно: конструктор уже существует.");
         if (IsStatic) throw new Exception($"Объявление невозможно: статический класс не может иметь конструктор.");
 
         Constructor = constructor;
