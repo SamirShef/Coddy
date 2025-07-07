@@ -71,12 +71,12 @@
 Пример
 ```
 func main() {
-	let a : int;  // ОК (имеет дефолтное значение 0)
-	let b : int = 10;  // ОК
-	let c : double = 10f;  // ОК
-	let d : string = "Hello world!";  // ОК
-	let e : string = 10;  // ОШИБКА ТИПА
-	let f : int = 10.2f;  // ОШИБКА ТИПА
+  let a : int;  // ОК (имеет дефолтное значение 0)
+  let b : int = 10;  // ОК
+  let c : double = 10f;  // ОК
+  let d : string = "Hello world!";  // ОК
+  let e : string = 10;  // ОШИБКА ТИПА
+  let f : int = 10.2f;  // ОШИБКА ТИПА
 }
 ```
 Переменные можно использовать в выражениях
